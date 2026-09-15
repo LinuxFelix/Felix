@@ -1,0 +1,17 @@
+* text=auto
+*.sh text eol=lf
+Makefile text eol=lf
+*.py text eol=lf
+*.c text eol=lf
+*.h text eol=lf
+*.C text eol=lf
+*.H text eol=lf
+*.cxx text eol=lf
+*.png binary
+*.ttf binary
+*.ppm binary
+*.gz binary
+*.xz binary
+# Preserve upstream patch context and license notices verbatim.
+*.patch -whitespace
+*LICENSE.txt -whitespace

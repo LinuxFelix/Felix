@@ -1,0 +1,38 @@
+# Local builds, downloaded dependencies, virtual disks and test logs
+/build/
+/web/downloads/*.iso
+/web/downloads/*.iso.sha256
+__pycache__/
+*.pyc
+*.o
+*.lo
+*.la
+.libs/
+.deps/
+autom4te.cache/
+*.qcow2
+*.vmdk
+*.vdi
+*.swp
+*~
+
+# Local credentials and environment overrides
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Upstream sources are fetched and patched by make sources.
+/userland/tinyx/
+/userland/flwm/
+/userland/wbar/
+/userland/fltk-*-source.tar.gz
+
+# Generated theme assets and downloaded fonts/icons
+/userland/share/theme/*.png
+/userland/share/theme/*.ppm
+/userland/share/theme/*.ttf
+/web/assets/*.png
+/web/assets/*.ttf
+/web/images/theme-preview.png

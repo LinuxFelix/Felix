@@ -1,0 +1,6 @@
+#!/bin/sh
+# Root-pixmap transparency follows the wallpaper without a compositor.
+# Xterm remains installed as an opaque fallback terminal.
+exec /usr/bin/urxvt -title 'Terminal' -fn 'xft:DejaVu Sans Mono:size=10' -fb 'xft:DejaVu Sans Mono:style=Bold:size=10' \
+    -tr -sh 75 -tint '#79b9dd' -bg '#183d56' -fg '#f8fbff' -cr '#a6e4ff' \
+    -geometry 80x24+160+110 -sb -sbt 10 +sr +st -bc -pe background "$@"

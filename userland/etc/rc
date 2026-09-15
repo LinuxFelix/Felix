@@ -1,0 +1,13 @@
+#!/bin/sh
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/pkg/bin
+export PATH
+mount -u -o rw /
+mount -t tmpfs tmpfs /tmp
+hostname felix
+ifconfig lo0 127.0.0.1 up
+ifconfig vioif0 10.0.2.15/24 up
+route add default 10.0.2.2
+echo 'Felix: starting TinyX and flwm; connect VNC to host 127.0.0.1:5900'
+/usr/pkg/bin/felix-session
+echo 'Felix session ended'
+poweroff

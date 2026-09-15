@@ -1,0 +1,7 @@
+#!/bin/sh
+case " $(cat /proc/cmdline) " in
+ *' felix.text=1 '*) exec /sbin/getty 38400 tty1 linux ;;
+ *' felix.rescue=1 '*) exec /sbin/getty 38400 tty1 linux ;;
+esac
+/usr/bin/felix-session
+exec /sbin/getty 38400 tty1 linux

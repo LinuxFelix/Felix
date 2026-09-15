@@ -1,0 +1,3 @@
+#!/bin/sh
+# The first config record supplies the vertical, center-left layout options.
+exec /usr/bin/wbar --config /usr/share/felix/wbar.cfg

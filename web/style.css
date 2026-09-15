@@ -1,0 +1,80 @@
+@font-face { font-family: DejaVu; src: url('assets/DejaVuSans.ttf') format('truetype'); font-display: swap; }
+@font-face { font-family: DejaVuMono; src: url('assets/DejaVuSansMono.ttf') format('truetype'); font-display: swap; }
+* { box-sizing: border-box; }
+html { background: #252d37; color: #e6ebef; }
+body { margin: 0; padding: 34px 18px; font: 13px/1.65 DejaVu, Verdana, sans-serif; }
+a { color: #b6d5ea; text-decoration: underline; text-underline-offset: 2px; }
+a:visited { color: #c9bedb; }
+a:hover { color: #fff; }
+a:focus-visible { outline: 2px solid #bde4ff; outline-offset: 4px; }
+.site { max-width: 960px; margin: 0 auto; border: 1px solid #a1aab5; box-shadow: 3px 3px 0 #141a21; background: #3c444f; }
+.titlebar { display: flex; justify-content: space-between; align-items: center; background: #657384; border-bottom: 1px solid #222933; padding: 3px 9px; font-size: 11px; color: #fff; }
+.window-marks { letter-spacing: 5px; font: 14px DejaVuMono, monospace; }
+.masthead { display: flex; justify-content: space-between; align-items: center; padding: 24px 30px; border-top: 1px solid #78828f; border-bottom: 1px solid #202730; background: linear-gradient(#485360, #343e4b); }
+.wordmark, .wordmark:visited { font-size: 47px; line-height: 1; letter-spacing: -3px; color: #d7e0e8; text-decoration: none; text-shadow: 2px 2px #1d2631; }
+.wordmark span { display: block; margin-top: 12px; font-size: 10px; letter-spacing: 1px; text-shadow: none; color: #b0becb; }
+.masthead p { margin: 0; text-align: right; font: 11px/1.9 DejaVuMono, monospace; }
+.muted, .small { color: #bbc6d0; }
+.small { font-size: 11px; }
+.layout { display: grid; grid-template-columns: 174px minmax(0, 1fr); }
+aside { padding: 21px 14px; background: #333c47; border-right: 1px solid #222a34; box-shadow: inset -1px 0 #525d69; }
+aside h2 { font-size: 11px; font-weight: normal; letter-spacing: 1px; text-transform: uppercase; color: #bac7d2; margin: 0 0 10px; }
+nav ul { list-style: none; margin: 0 -5px 29px; padding: 0; }
+nav a { display: flex; gap: 9px; align-items: center; padding: 9px 7px; border: 1px solid transparent; text-decoration: none; color: #dce6ed; }
+nav a:visited { color: #dce6ed; }
+nav a:hover { background: #424e5c; }
+nav a[aria-current] { background: #536173; border-color: #8391a1 #252e39 #252e39 #8391a1; color: white; }
+nav img { image-rendering: auto; }
+.sidebar-note { border-top: 1px solid #626d78; padding-top: 15px; margin-top: 15px; }
+.sidebar-note p { font-size: 11px; color: #c3cdd5; line-height: 1.95; }
+.badge { width: fit-content; border: 1px solid #788592; padding: 1px 5px; font: 9px/1.7 DejaVuMono, monospace; background: #252f3b; color: #c1d2df; }
+main { padding: 27px 31px 35px; min-width: 0; }
+h1 { font-size: 30px; line-height: 1.3; letter-spacing: -1px; font-weight: normal; margin: 8px 0 16px; color: #f0f3f6; }
+h2 { font-size: 15px; margin: 27px 0 10px; color: #ecf1f5; }
+p { margin: 10px 0 16px; }
+.eyebrow { margin: 0; font: 10px DejaVuMono, monospace; letter-spacing: 1px; color: #b0c4d5; }
+.intro { font-size: 15px; color: #d2dee8; }
+.button, .button:visited { display: inline-block; background: #627489; color: #fff; border: 1px solid; border-color: #adbcc9 #182330 #182330 #adbcc9; padding: 6px 15px; text-decoration: none; font-weight: bold; box-shadow: 1px 1px #222b35; }
+.button:hover { background: #73869c; }
+.button:active { border-color: #182330 #adbcc9 #adbcc9 #182330; }
+.download-line { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin: 25px 0 30px; }
+.download-line span { font-size: 10px; color: #c1ccd5; }
+.rule-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 1px solid #697481; }
+.rule-heading h2 { margin: 0 0 7px; }
+.rule-heading span { font-size: 10px; color: #b2c0cc; }
+.features { margin: 15px 0 25px; }
+.features dt { color: #e9eff5; font-weight: bold; margin-top: 15px; }
+.features dd { margin: 4px 0 0; color: #c3cfd9; }
+.news { border: 1px solid; border-color: #202a35 #697580 #697580 #202a35; padding: 13px 17px 3px; background: #303b49; }
+.news h2 { margin: 0; font-size: 13px; }
+.date { font: 10px DejaVuMono, monospace; color: #aebfce; margin: 6px 0; }
+.news p { font-size: 12px; }
+.download-box { background: #303c4a; border: 1px solid #7a8796; padding: 0 20px 5px; margin: 23px 0; }
+.download-box h2 { margin-top: 17px; }
+table { border-collapse: collapse; width: 100%; margin: 15px 0 20px; font-size: 12px; }
+caption { text-align: left; color: #bac7d2; font-size: 11px; margin-bottom: 7px; }
+th, td { border: 1px solid #707b87; padding: 8px 10px; text-align: left; vertical-align: top; }
+th { width: 30%; background: #333e4b; font-weight: normal; color: #dce5ec; }
+.notice { border-left: 3px solid #acbac8; background: #333e4b; padding: 10px 13px; font-size: 12px; }
+code, pre { font-family: DejaVuMono, monospace; font-size: 11px; }
+pre { background: #203447; border: 1px inset #7e8b9a; color: #dceaf4; padding: 13px; overflow-x: auto; }
+.checksum { overflow-wrap: anywhere; padding: 8px 11px; background: #303944; border: 1px solid #65717e; }
+li { margin: 6px 0; }
+figure { margin: 18px 0 30px; }
+figure img { display: block; width: 100%; height: auto; border: 1px solid #95a1ad; }
+figcaption { margin-top: 8px; color: #bdcbd6; font-size: 11px; }
+footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-top: 1px solid #6d7885; background: #303946; padding: 10px 15px; color: #b6c3cf; font-size: 10px; }
+.skip { position: absolute; left: -10000px; }
+.skip:focus { left: 20px; top: 3px; background: #1d2732; padding: 5px; z-index: 1; }
+@media (max-width: 640px) {
+ body { padding: 10px; } .masthead { padding: 21px 17px; } .masthead p { font-size: 9px; }
+ .wordmark { font-size: 38px; } .wordmark span { font-size: 8px; }
+ .layout { grid-template-columns: 1fr; } aside { padding: 10px; border-right: 0; border-bottom: 1px solid #202730; box-shadow: none; }
+ nav h2, .sidebar-note, .badge { display: none; } nav ul { display: flex; flex-wrap: wrap; margin: 0; gap: 3px; }
+ nav a { padding: 6px 8px; font-size: 11px; gap: 5px; } nav img { width: 18px; height: 18px; }
+ main { padding: 24px 18px; } h1 { font-size: 27px; } .rule-heading { display: block; } .rule-heading span { display: block; margin-bottom: 7px; }
+}
+@media print {
+ body, html, .site, main { background: white; color: black; } body { padding: 0; } .site { box-shadow: none; border: 0; }
+ aside, .window-marks, .skip { display: none; } .layout { display: block; } a, a:visited, h1, h2, p, dt, dd { color: black !important; }
+}

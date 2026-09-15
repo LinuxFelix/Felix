@@ -1,0 +1,120 @@
+#!/bin/sh
+# Live-only destructive installer backend. Password arrives on stdin, never argv.
+set -eu
+set -o pipefail
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin
+fail() { echo "ERROR: $*" >&2; exit 1; }
+valid_name() { echo "$1" | grep -Eq '^(sd[a-z]+|hd[a-z]+|vd[a-z]+|nvme[0-9]+n[0-9]+)$'; }
+fingerprint() { { cat "$1/dev" "$1/size"; cat "$1/device/serial" 2>/dev/null || :; readlink -f "$1"; } | sha256sum | cut -d' ' -f1; }
+eligible() {
+    path=$1; name=${path##*/}
+    valid_name "$name" || return 1
+    [ -b "/dev/$name" ] && [ "$(cat "$path/ro")" = 0 ] || return 1
+    sectors=$(cat "$path/size")
+    [ "$sectors" -ge 4194304 ] && [ "$sectors" -le 4294967295 ] || return 1
+    for node in "$path" "$path"/*; do
+        [ -f "$node/dev" ] || continue
+        devno=$(cat "$node/dev")
+        awk -v d="$devno" '$3==d{found=1} END{exit !found}' /proc/self/mountinfo && return 1
+        for holder in "$node/holders/"*; do [ ! -e "$holder" ] || return 1; done
+        while read -r swap rest; do [ "$swap" != "/dev/${node##*/}" ] || return 1; done </proc/swaps
+    done
+    return 0
+}
+list() {
+    for path in /sys/block/*; do
+        eligible "$path" || continue
+        name=${path##*/}; model=$(cat "$path/device/model" 2>/dev/null || echo Disk)
+        model=$(printf '%s' "$model" | tr '\t\r\n' '   ')
+        printf '/dev/%s\t%s\t%s\t%s\n' "$name" "$(cat "$path/size")" "$(fingerprint "$path")" "$model"
+    done
+}
+[ "${1:-}" != --list ] || { list; exit; }
+[ "${1:-}" = --erase-and-install ] && [ "$#" = 4 ] || fail 'Use the Felix Installer wizard.'
+[ "$(id -u)" = 0 ] || fail 'Root permission is required.'
+[ -f /etc/felix-live ] && [ ! -f /etc/felix-installed-user ] || fail 'Boot the Felix live ISO to install.'
+disk=$2; expected=$3; username=$4; name=${disk#/dev/}
+[ "$disk" = "/dev/$name" ] && valid_name "$name" || fail 'Invalid disk.'
+echo "$username" | grep -Eq '^[a-z][a-z0-9_-]{0,30}$' || fail 'Invalid login name.'
+! id "$username" >/dev/null 2>&1 || fail 'That login name already exists.'
+IFS= read -r password || fail 'No password received.'
+[ "${#password}" -ge 8 ] && [ "${#password}" -le 128 ] || fail 'Password must contain 8 to 128 characters.'
+validate() {
+    eligible "/sys/block/$name" || fail 'The disk is mounted, busy, read-only, missing or outside the supported 2 GiB–2 TiB size range.'
+    [ "$(fingerprint "/sys/block/$name")" = "$expected" ] || fail 'The selected disk changed. Select it again.'
+}
+validate
+mkdir /run/felix-installer.lock 2>/dev/null || fail 'Another installation is running.'
+work=$(mktemp -d /mnt/felix-install.XXXXXX); target=$work/target; source=$work/source
+mkdir "$target" "$source"
+cleanup() { unset password; umount "$target" 2>/dev/null || :; umount "$source" 2>/dev/null || :; rmdir "$target" "$source" "$work" /run/felix-installer.lock 2>/dev/null || :; }
+trap cleanup EXIT
+trap 'exit 1' INT TERM HUP
+echo 'Checking Ethernet and downloading installation dependencies. No disk data has been changed.'
+ethernet=false
+for iface in /sys/class/net/*; do
+    [ "${iface##*/}" != lo ] && [ ! -d "$iface/wireless" ] && [ ! -e "$iface/phy80211" ] || continue
+    [ "$(cat "$iface/carrier" 2>/dev/null || echo 0)" != 1 ] || ethernet=true
+done
+$ethernet || fail 'Connect Ethernet and try again.'
+apk update || fail 'Cannot reach the Alpine repositories. Check Ethernet, DNS and the clock.'
+apk add sudo e2fsprogs sfdisk syslinux blkid xauth || fail 'Dependency installation failed; the disk was not erased.'
+[ -f /usr/share/syslinux/mbr.bin ] && command -v extlinux >/dev/null || fail 'Bootloader files are missing.'
+echo 'Locating the live ISO kernel...'
+found=false
+for node in /sys/class/block/*; do
+    device=/dev/${node##*/}
+    [ -b "$device" ] || continue
+    [ "$(blkid -s TYPE -o value "$device" 2>/dev/null || :)" = iso9660 ] || continue
+    if mount -t iso9660 -o ro "$device" "$source"; then
+        if [ -f "$source/boot/vmlinuz" ] && [ "$(sha256sum "$source/boot/vmlinuz" | cut -d' ' -f1)" = "$(cut -d' ' -f1 /usr/share/felix/kernel.sha256)" ]; then found=true; break; fi
+        umount "$source"
+    fi
+done
+$found || fail 'The matching Felix ISO must remain attached during installation.'
+validate
+echo "Erasing $disk and creating one bootable ext4 partition..."
+printf 'label: dos\nunit: sectors\n\nstart=2048, type=83, bootable\n' | sfdisk --wipe always --wipe-partitions always "$disk"
+case "$name" in nvme*) part=${disk}p1 ;; *) part=${disk}1 ;; esac
+mdev -s
+tries=0
+while [ ! -b "$part" ]; do tries=$((tries+1)); [ "$tries" -lt 10 ] || fail 'Partition device did not appear.'; sleep 1; done
+[ "$(readlink -f "/sys/class/block/${part##*/}/..")" = "$(readlink -f "/sys/block/$name")" ] || fail 'Partition parent does not match selected disk.'
+validate
+mkfs.ext4 -F -L FELIXROOT -O '^64bit,^metadata_csum_seed,^orphan_file' "$part"
+mount -t ext4 "$part" "$target"
+echo 'Copying the operating system to disk (not an in-memory installation)...'
+tar -C / -cpf - bin etc lib sbin usr var | tar -C "$target" -xpf -
+mkdir -p "$target"/dev/pts "$target"/proc "$target"/sys "$target"/run "$target"/tmp "$target"/mnt "$target"/root "$target"/home "$target"/boot/syslinux
+chmod 1777 "$target/tmp"
+rm -f "$target/etc/felix-live"
+cp "$source/boot/vmlinuz" "$target/boot/vmlinuz"
+cp /usr/share/syslinux/ldlinux.c32 /usr/share/syslinux/vesamenu.c32 /usr/share/syslinux/libcom32.c32 /usr/share/syslinux/libutil.c32 "$target/boot/syslinux/"
+cp /usr/share/felix/theme/boot.png "$target/boot/syslinux/splash.png"
+partuuid=$(blkid -s PARTUUID -o value "$part")
+echo "$partuuid" | grep -Eq '^[0-9a-fA-F]{8}-01$' || fail 'Unable to determine the boot partition ID.'
+sed "s/@PARTUUID@/$partuuid/g" /usr/share/felix/installed-extlinux.cfg > "$target/boot/syslinux/extlinux.conf"
+printf 'PARTUUID=%s / ext4 defaults 0 1\n' "$partuuid" > "$target/etc/fstab"
+printf '%s\n' "$username" > "$target/etc/felix-installed-user"
+printf 'Felix Linux 6.18 - installed system\n\n' > "$target/etc/issue"
+printf 'Welcome to Felix. Use sudo for administrator commands.\n' > "$target/etc/motd"
+cp /usr/share/felix/installed-inittab "$target/etc/inittab"
+echo 'Creating the user account with password-protected sudo access...'
+chroot "$target" adduser -D -s /bin/sh "$username"
+chroot "$target" addgroup "$username" wheel
+printf '%s:%s\n' "$username" "$password" | chroot "$target" chpasswd
+unset password
+chroot "$target" passwd -l root
+mkdir -p "$target/etc/sudoers.d"
+printf '%%wheel ALL=(ALL:ALL) ALL\n' > "$target/etc/sudoers.d/felix-wheel"
+chmod 0440 "$target/etc/sudoers.d/felix-wheel"
+chroot "$target" visudo -cf /etc/sudoers
+cp -R /etc/skel/. "$target/home/$username/"
+mkdir -p "$target/home/$username/Documents" "$target/home/$username/.felix"
+chroot "$target" chown -R "$username:$username" "/home/$username"
+echo 'Installing the BIOS bootloader. The kernel will mount the ext4 root directly.'
+extlinux --install "$target/boot/syslinux"
+dd if=/usr/share/syslinux/mbr.bin of="$disk" bs=440 count=1 conv=notrunc
+sync
+umount "$target"
+echo 'INSTALL_COMPLETE: Remove the ISO and reboot. Felix will run from the installed ext4 filesystem.'

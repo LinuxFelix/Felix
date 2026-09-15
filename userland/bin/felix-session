@@ -1,0 +1,66 @@
+#!/bin/sh
+# TinyCore-style session: root color first, then flwm, logout when it exits.
+set -eu
+PATH=/usr/bin:/bin:/usr/sbin:/sbin
+export PATH
+export HOME=/root DISPLAY=:0
+# Confirmed in TinyCore flwm Frame.C: sscanf("%02X:%02X:%02X").
+export FLWM_TITLEBAR_COLOR=E5:EF:F7
+mkdir -p /tmp/.X11-unix
+chmod 1777 /tmp /tmp/.X11-unix
+mkdir /run/felix-x.lock 2>/dev/null || { echo 'A desktop session is already starting.' >&2; exit 1; }
+xpid= wmpid= dockpid= clockpid=
+cleanup() {
+    trap - EXIT HUP INT TERM
+    [ -z "$wmpid" ] || kill "$wmpid" 2>/dev/null || :
+    [ -z "$dockpid" ] || kill "$dockpid" 2>/dev/null || :
+    [ -z "$clockpid" ] || kill "$clockpid" 2>/dev/null || :
+    [ -z "$xpid" ] || kill "$xpid" 2>/dev/null || :
+    wait 2>/dev/null || :
+    rmdir /run/felix-x.lock 2>/dev/null || :
+}
+trap cleanup EXIT
+trap 'exit 0' HUP INT TERM
+desktop_user=
+set --
+if [ -f /etc/felix-installed-user ]; then
+    desktop_user=$(cat /etc/felix-installed-user)
+    id "$desktop_user" >/dev/null
+    mkdir -p /run/felix-desktop
+    export XAUTHORITY=/run/felix-desktop/Xauthority
+    umask 077
+    cookie=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+    printf 'add :0 . %s\n' "$cookie" | xauth -f "$XAUTHORITY" >/dev/null
+    unset cookie
+    chown "$desktop_user" "$XAUTHORITY"
+    chmod 600 "$XAUTHORITY"
+    set -- -auth "$XAUTHORITY"
+    umask 022
+fi
+# VESA is initialized by the BIOS boot loader; Linux exposes it as /dev/fb0.
+Xfbdev "$DISPLAY" "$@" -mouse /dev/input/mice,5 -nolisten tcp -noreset -fp built-ins \
+    >/tmp/tinyx.log 2>&1 &
+xpid=$!
+tries=0
+while :; do
+    kill -0 "$xpid" 2>/dev/null || { cat /tmp/tinyx.log >&2; exit 1; }
+    if [ -S /tmp/.X11-unix/X0 ] && felix-root '#66A9CE' 2>/dev/null; then break; fi
+    tries=$((tries + 1))
+    [ "$tries" -lt 20 ] || { echo 'TinyX readiness timeout' >&2; exit 1; }
+    sleep 1
+done
+if [ -n "$desktop_user" ]; then
+    su -s /bin/sh -c /usr/bin/felix-desktop "$desktop_user" &
+    wmpid=$!
+    wait "$wmpid"
+    exit
+fi
+felix-apps settings --apply || echo 'Using default desktop settings' >&2
+flwm &
+wmpid=$!
+echo "$wmpid" >/tmp/felix-wm.pid
+felix-dock >/tmp/wbar.log 2>&1 &
+dockpid=$!
+felix-apps clock >/tmp/clock.log 2>&1 &
+clockpid=$!
+wait "$wmpid"

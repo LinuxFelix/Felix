@@ -1,0 +1,23 @@
+diff --git a/src/core/XWin.cc b/src/core/XWin.cc
+index a4fe23a..f652dd1 100644
+--- a/src/core/XWin.cc
++++ b/src/core/XWin.cc
+@@ -64,6 +64,9 @@ XWin::~XWin() {
+ void XWin::getCurrentScreenDimensions() {
+ 	cur_screen_width = WidthOfScreen(DefaultScreenOfDisplay(display));
+ 	cur_screen_height = HeightOfScreen(DefaultScreenOfDisplay(display));
++	// TinyX exposes RandR 1.1: use its framebuffer dimensions there.
++	int major=0, minor=0;
++	if (!XRRQueryVersion(display, &major, &minor) || major<1 || (major==1 && minor<2)) return;
+ 
+ 	const int screen = DefaultScreen(display);
+ 	XRRScreenResources *res = XRRGetScreenResources(display, RootWindow(display, screen));
+@@ -71,7 +74,7 @@ void XWin::getCurrentScreenDimensions() {
+ 	if (!res)
+ 		return;
+ 
+-	RROutput primary = XRRGetOutputPrimary(display, RootWindow(display, screen));
++	RROutput primary = (major>1 || minor>=3) ? XRRGetOutputPrimary(display, RootWindow(display, screen)) : None;
+ 	int looking_for_primary;
+ 	int output;
+ 

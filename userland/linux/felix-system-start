@@ -1,0 +1,17 @@
+#!/bin/sh
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mountpoint -q /dev || mount -t devtmpfs devtmpfs /dev
+mount -t tmpfs -o mode=0755 tmpfs /run
+mount -t tmpfs -o mode=1777 tmpfs /tmp
+mkdir -p /dev/pts /dev/shm /run/felix-wifi/control
+mount -t devpts devpts /dev/pts
+mount -t tmpfs -o mode=1777 tmpfs /dev/shm
+hostname felix
+mdev -s
+ip link set lo up
+ip link set eth0 up
+udhcpc -i eth0 -n -t 5 -T 2 >/run/ethernet.log 2>&1 &
+account=$(cat /etc/felix-installed-user)
+HOME=/home/$account /usr/bin/wificonfig --autoconnect >/run/felix-wifi/autoconnect.log 2>&1 &

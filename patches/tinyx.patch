@@ -1,0 +1,794 @@
+diff --git a/Xext/bigreq.c b/Xext/bigreq.c
+index 8059641..91b70f0 100644
+--- a/Xext/bigreq.c
++++ b/Xext/bigreq.c
+@@ -50,7 +50,7 @@ static void BigReqResetProc(ExtensionEntry *    /* extEntry */
+ static DISPATCH_PROC(ProcBigReqDispatch);
+ 
+ void
+-BigReqExtensionInit(INITARGS)
++BigReqExtensionInit(void)
+ {
+ #if 0
+     ExtensionEntry *extEntry;
+diff --git a/Xext/dpms.c b/Xext/dpms.c
+index b75f482..2705eb5 100644
+--- a/Xext/dpms.c
++++ b/Xext/dpms.c
+@@ -91,7 +91,7 @@ static DISPATCH_PROC(SProcDPMSCapable);
+ static void DPMSResetProc(ExtensionEntry * extEntry);
+ 
+ void
+-DPMSExtensionInit(INITARGS)
++DPMSExtensionInit(void)
+ {
+ #if 0
+     ExtensionEntry *extEntry;
+diff --git a/Xext/saver.c b/Xext/saver.c
+index 0ba9928..399fb01 100644
+--- a/Xext/saver.c
++++ b/Xext/saver.c
+@@ -239,7 +239,7 @@ static int ScreenPrivateIndex;
+  ****************/
+ 
+ void
+-ScreenSaverExtensionInit(INITARGS)
++ScreenSaverExtensionInit(void)
+ {
+     ExtensionEntry *extEntry;
+ 
+diff --git a/Xext/shm.c b/Xext/shm.c
+index 957fcf3..4e7b2c4 100644
+--- a/Xext/shm.c
++++ b/Xext/shm.c
+@@ -208,7 +208,7 @@ CheckForShmSyscall()
+ #endif
+ 
+ void
+-ShmExtensionInit(INITARGS)
++ShmExtensionInit(void)
+ {
+     ExtensionEntry *extEntry;
+ 
+diff --git a/Xext/sync.c b/Xext/sync.c
+index 460cc5e..f8b6b6e 100644
+--- a/Xext/sync.c
++++ b/Xext/sync.c
+@@ -2296,7 +2296,7 @@ ExtensionEntry *extEntry;
+  * ** Initialise the extension.
+  */
+ void
+-SyncExtensionInit(INITARGS)
++SyncExtensionInit(void)
+ {
+     ExtensionEntry *extEntry;
+ 
+diff --git a/Xext/xcmisc.c b/Xext/xcmisc.c
+index d8bfc81..2f11ab5 100644
+--- a/Xext/xcmisc.c
++++ b/Xext/xcmisc.c
+@@ -64,7 +64,7 @@ static DISPATCH_PROC(SProcXCMiscGetXIDList);
+ static DISPATCH_PROC(SProcXCMiscGetXIDRange);
+ 
+ void
+-XCMiscExtensionInit(INITARGS)
++XCMiscExtensionInit(void)
+ {
+ #if 0
+     ExtensionEntry *extEntry;
+diff --git a/Xext/xres.c b/Xext/xres.c
+index 39ba82e..12c12a4 100644
+--- a/Xext/xres.c
++++ b/Xext/xres.c
+@@ -373,7 +373,7 @@ SProcResDispatch(ClientPtr client)
+ }
+ 
+ void
+-ResExtensionInit(INITARGS)
++ResExtensionInit(void)
+ {
+     (void) AddExtension(XRES_NAME, 0, 0,
+                         ProcResDispatch, SProcResDispatch,
+diff --git a/Xext/xtest.c b/Xext/xtest.c
+index e0f2bdc..1856560 100644
+--- a/Xext/xtest.c
++++ b/Xext/xtest.c
+@@ -80,7 +80,7 @@ static DISPATCH_PROC(SProcXTestGetVersion);
+ static DISPATCH_PROC(SProcXTestGrabControl);
+ 
+ void
+-XTestExtensionInit(INITARGS)
++XTestExtensionInit(void)
+ {
+ #if 0
+     ExtensionEntry *extEntry;
+diff --git a/configure.ac b/configure.ac
+index a30d074..1c5899c 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -53,6 +53,8 @@ AC_PROG_YACC
+ AC_HEADER_DIRENT
+ AC_HEADER_STDC
+ AC_CHECK_HEADERS([fcntl.h stdlib.h string.h unistd.h])
++AC_CHECK_HEADERS([dev/wscons/wsconsio.h])
++AM_CONDITIONAL(KDRIVEWSCONS, [test "x$ac_cv_header_dev_wscons_wsconsio_h" = xyes])
+ 
+ dnl Checks for typedefs, structures, and compiler characteristics.
+ AC_C_CONST
+@@ -660,6 +662,7 @@ Xext/Makefile
+ xfixes/Makefile
+ kdrive/Makefile
+ kdrive/fbdev/Makefile
++kdrive/remote/Makefile
+ kdrive/linux/Makefile
+ kdrive/src/Makefile
+ kdrive/vesa/Makefile
+diff --git a/dix/dixfonts.c b/dix/dixfonts.c
+index 667ff21..a75775f 100644
+--- a/dix/dixfonts.c
++++ b/dix/dixfonts.c
+@@ -75,6 +75,8 @@ Equipment Corporation.
+ extern pointer fosNaturalParams;
+ 
+ extern FontPtr defaultFont;
++/* libXfont 1.x exposes this symbol without a public installed prototype. */
++extern void BuiltinRegisterFpeFunctions(void);
+ 
+ static FontPathElementPtr *font_path_elements = (FontPathElementPtr *) 0;
+ 
+@@ -1859,9 +1861,9 @@ InitFonts()
+     patternCache = MakeFontPatternCache();
+ 
+     {
+-#ifdef KDRIVESERVER
++        /* Every TinyX DDX is Kdrive. dix-config.h does not expose
++         * KDRIVESERVER, so the old guard silently disabled built-in fonts. */
+         BuiltinRegisterFpeFunctions();
+-#endif
+         FontFileRegisterFpeFunctions();
+     }
+ }
+@@ -2052,4 +2054,3 @@ remove_fs_handlers(FontPathElementPtr fpe, BlockHandlerProcPtr block_handler,
+     }
+     RemoveFontWakeup(fpe);
+ }
+-
+diff --git a/fb/fbblt.c b/fb/fbblt.c
+index 7c07d36..7ec70da 100644
+--- a/fb/fbblt.c
++++ b/fb/fbblt.c
+@@ -56,7 +56,6 @@ fbBlt(FbBits * srcLine,
+     FbBits bits, bits1;
+     int n, nmiddle;
+     Bool destInvarient;
+-    int careful;
+     int startbyte, endbyte;
+ 
+     FbDeclareMergeRop();
+@@ -67,11 +66,10 @@ fbBlt(FbBits * srcLine,
+         return;
+     }
+ 
+-    careful = !((srcLine < dstLine && srcLine + width * (bpp>>3) > dstLine) ||
+-    		(dstLine < srcLine && dstLine + width * (bpp>>3) > srcLine)) ||
+-    		(bpp & 7);
+-
+-    if (alu == GXcopy && pm == FB_ALLONES && !careful &&
++    /* Window moves copy overlapping rectangles. memmove handles overlap
++     * within a scanline; upsidedown preserves overlapping source rows.
++     * width/srcX/dstX are bits, not pixel counts or FbBits offsets. */
++    if (alu == GXcopy && pm == FB_ALLONES && !(bpp & 7) &&
+         !(srcX & 7) && !(dstX & 7) && !(width & 7)) {
+         int i;
+         CARD8 *tmpsrc = (CARD8 *) srcLine;
+@@ -85,10 +83,10 @@ fbBlt(FbBits * srcLine,
+ 
+         if (!upsidedown)
+             for (i = 0; i < height; i++)
+-                memcpy(tmpdst + i * dstStride, tmpsrc + i * srcStride, width);
++                memmove(tmpdst + i * dstStride, tmpsrc + i * srcStride, width);
+         else
+             for (i = height - 1; i >= 0; i--)
+-                memcpy(tmpdst + i * dstStride, tmpsrc + i * srcStride, width);
++                memmove(tmpdst + i * dstStride, tmpsrc + i * srcStride, width);
+ 
+         return;
+     }
+diff --git a/kdrive/Makefile.am b/kdrive/Makefile.am
+index 8f0bd76..5f126c3 100644
+--- a/kdrive/Makefile.am
++++ b/kdrive/Makefile.am
+@@ -14,6 +14,6 @@ SUBDIRS =			\
+ 	src			\
+ 	$(LINUX_SUBDIRS)	\
+ 	$(FBDEV_SUBDIRS)	\
+-	$(VESA_SUBDIRS)
++	$(VESA_SUBDIRS) remote
+ 
+-DIST_SUBDIRS = vesa fbdev src linux
++DIST_SUBDIRS = vesa fbdev src linux remote
+diff --git a/mi/miinitext.c b/mi/miinitext.c
+index 5edb683..b4a27cb 100644
+--- a/mi/miinitext.c
++++ b/mi/miinitext.c
+@@ -91,7 +91,7 @@ typedef void (*InitExtension)(INITARGS);
+ #define _XSHM_SERVER_
+ #include <X11/extensions/shmstr.h>
+ #define _XTEST_SERVER_
+-#include <X11/extensions/XTest.h>
++#include <X11/extensions/xtestconst.h>
+ #ifdef XF86BIGFONT
+ #include <X11/extensions/xf86bigfproto.h>
+ #endif
+@@ -231,4 +231,3 @@ InitVisualWrap()
+ {
+     miResetInitVisuals();
+ }
+-
+diff --git a/miext/shadow/shpacked.c b/miext/shadow/shpacked.c
+index fb45380..2ce98b3 100644
+--- a/miext/shadow/shpacked.c
++++ b/miext/shadow/shpacked.c
+@@ -26,6 +26,7 @@
+ #endif
+ 
+ #include <stdlib.h>
++#include <string.h>
+ 
+ #include    <X11/X.h>
+ #include    "scrnintstr.h"
+@@ -104,14 +105,18 @@ shadowUpdatePacked(ScreenPtr pScreen, shadowBufPtr pBuf)
+                     scrBase = scr;
+                     winSize /= sizeof(FbBits);
+                     i = winSize;
++                    if (i <= 0)
++                        return; /* A broken/empty bank must not spin forever. */
+                 }
+                 win = winBase + (scr - scrBase);
+                 if (i > width)
+                     i = width;
+                 width -= i;
+                 scr += i;
+-                while (i--)
+-                    *win++ = *sha++;
++                /* Shadow RAM and the framebuffer bank are separate storage.
++                 * Copy each contiguous span through libc's bulk-copy path. */
++                memcpy(win, sha, (size_t)i * sizeof(FbBits));
++                sha += i;
+             }
+             shaLine += shaStride;
+             y++;
+diff --git a/kdrive/remote/Makefile.am b/kdrive/remote/Makefile.am
+new file mode 100755
+index 0000000..346fe0e
+--- /dev/null
++++ b/kdrive/remote/Makefile.am
+@@ -0,0 +1,12 @@
++AM_CPPFLAGS = @KDRIVE_INCS@ @KDRIVE_CFLAGS@
++bin_PROGRAMS = Xtinyremote
++Xtinyremote_SOURCES = remote.c rfb.c rfb.h
++Xtinyremote_LDADD = @KDRIVE_LIBS@ @XSERVER_LIBS@
++Xtinyremote_DEPENDENCIES = @KDRIVE_LIBS@
++if KDRIVEWSCONS
++bin_PROGRAMS += Xtinywsfb
++Xtinywsfb_SOURCES = remote.c rfb.c rfb.h wsfb.c wsfb.h
++Xtinywsfb_CPPFLAGS = $(AM_CPPFLAGS) -DFELIX_WSCONS
++Xtinywsfb_LDADD = @KDRIVE_LIBS@ @XSERVER_LIBS@
++Xtinywsfb_DEPENDENCIES = @KDRIVE_LIBS@
++endif
+diff --git a/kdrive/remote/remote.c b/kdrive/remote/remote.c
+new file mode 100755
+index 0000000..26bafea
+--- /dev/null
++++ b/kdrive/remote/remote.c
+@@ -0,0 +1,164 @@
++/* TinyX portable memory framebuffer and RFB input adapter for Felix.
++ * SPDX-License-Identifier: GPL-3.0-or-later
++ */
++#ifdef HAVE_CONFIG_H
++#include <kdrive-config.h>
++#endif
++#include "kdrive.h"
++#include "kkeymap.h"
++#include "inputstr.h"
++#include "rfb.h"
++#ifdef FELIX_WSCONS
++#include "wsfb.h"
++#endif
++#include <X11/keysym.h>
++#include <signal.h>
++#include <stdlib.h>
++
++static const char *address = "127.0.0.1";
++static unsigned port = 5900;
++static int input_ready;
++static int previous_x, previous_y, have_pointer;
++extern PtrCtrl defaultPointerControl;
++#ifdef FELIX_WSCONS
++static const KdOsFuncs remote_os = { .pollEvents = wsfb_poll };
++#else
++static const KdOsFuncs remote_os = { .pollEvents = rfb_poll };
++#endif
++/* Required by the X server OS layer; no device/VT privileges are needed. */
++void OsVendorInit(void) {}
++
++static void keyboard_load(void) {
++    const char *row1 = "1234567890-=", *upper1 = "!@#$%^&*()_+";
++    const char *row2 = "qwertyuiop[]", *upper2 = "QWERTYUIOP{}";
++    const char *row3 = "asdfghjkl;'", *upper3 = "ASDFGHJKL:\"";
++    const char *row4 = "zxcvbnm,./", *upper4 = "ZXCVBNM<>?";
++    int i;
++    static const struct { int scan; KeySym sym; } special[] = {
++        {1,XK_Escape}, {14,XK_BackSpace}, {15,XK_Tab}, {28,XK_Return},
++        {29,XK_Control_L}, {42,XK_Shift_L}, {54,XK_Shift_R}, {56,XK_Alt_L},
++        {57,XK_space}, {58,XK_Caps_Lock}, {97,XK_Control_R}, {100,XK_Alt_R},
++        {102,XK_Home}, {103,XK_Up}, {104,XK_Page_Up}, {105,XK_Left},
++        {106,XK_Right}, {107,XK_End}, {108,XK_Down}, {109,XK_Page_Down},
++        {110,XK_Insert}, {111,XK_Delete}, {125,XK_Super_L}, {126,XK_Super_R}
++    };
++    kdMinScanCode = 0; kdMaxScanCode = 127;
++    memset(kdKeymap, 0, sizeof(kdKeymap));
++#define ROW(start, low, high) for (i = 0; low[i]; i++) { \
++    kdKeymap[((start) + i) * 4] = low[i]; kdKeymap[((start) + i) * 4 + 1] = high[i]; }
++    ROW(2,row1,upper1); ROW(16,row2,upper2);
++    ROW(30,row3,upper3); ROW(44,row4,upper4);
++#undef ROW
++    kdKeymap[41*4] = '`'; kdKeymap[41*4+1] = '~';
++    kdKeymap[43*4] = '\\'; kdKeymap[43*4+1] = '|';
++    for (i = 0; i < sizeof(special)/sizeof(special[0]); i++)
++        kdKeymap[special[i].scan*4] = special[i].sym;
++    for (i = 0; i < 10; i++) kdKeymap[(59+i)*4] = XK_F1+i;
++    kdKeymap[87*4] = XK_F11; kdKeymap[88*4] = XK_F12;
++}
++static void keyboard_event(uint32_t sym, int down) {
++    int scan, col;
++    if (!input_ready) return;
++    if (!sym) { KdReleaseAllKeys(); have_pointer = 0; return; }
++    for (scan = 0; scan <= kdMaxScanCode; scan++) for (col = 0; col < 2; col++)
++        if (kdKeymap[scan*4+col] == sym) {
++            KdEnqueueKeyboardEvent(scan, !down); return;
++        }
++}
++static void pointer_event(unsigned buttons, unsigned x, unsigned y) {
++    if (!input_ready) return;
++    if (have_pointer)
++        KdEnqueueMouseEvent(kdMouseInfo, buttons | KD_MOUSE_DELTA,
++                            (int)x - previous_x, (int)y - previous_y);
++    else KdEnqueueMouseEvent(kdMouseInfo, buttons, x, y);
++    previous_x = x; previous_y = y; have_pointer = 1;
++}
++static Bool mouse_init(void) { return TRUE; }
++static void noop(void) {}
++static int keyboard_init(void) { return 0; }
++static void leds(int mask) { (void)mask; }
++static void bell(int volume, int frequency, int duration) {
++#ifdef FELIX_WSCONS
++    wsfb_bell(volume, frequency, duration);
++#endif
++}
++static const KdMouseFuncs mouse_funcs = { mouse_init, noop };
++static const KdKeyboardFuncs keyboard_funcs = { keyboard_load, keyboard_init, leds, bell, noop, 0 };
++#ifdef FELIX_WSCONS
++static void wscons_key(uint32_t scan, int down) {
++    if (!input_ready) return;
++    if (scan == 0xffffffff) KdReleaseAllKeys();
++    else KdEnqueueKeyboardEvent(scan, !down);
++}
++static void wscons_pointer(unsigned buttons, int dx, int dy) {
++    if (input_ready) KdEnqueueMouseEvent(kdMouseInfo, buttons | KD_MOUSE_DELTA, dx, dy);
++}
++#endif
++static Bool card_init(KdCardInfo *card) {
++    card->driver = card; KdOsInit(&remote_os); return TRUE;
++}
++static Bool screen_init(KdScreenInfo *s) {
++    if (!s->width) s->width = 1024;
++    if (!s->height) s->height = 768;
++    if (s->width < 64 || s->height < 64 || s->width > 2048 || s->height > 2048
++        || s->randr != RR_Rotate_0) return FALSE;
++    s->fb.depth = 24; s->fb.bitsPerPixel = 32;
++    s->fb.pixelStride = s->width; s->fb.byteStride = s->width * 4;
++    s->fb.redMask = 0xff0000; s->fb.greenMask = 0x00ff00; s->fb.blueMask = 0x0000ff;
++    s->fb.visuals = (1 << TrueColor); s->fb.shadow = FALSE;
++    s->dumb = TRUE; s->softCursor = TRUE;
++#ifdef FELIX_WSCONS
++    { unsigned w,h,stride;
++      s->fb.frameBuffer = (CARD8 *)wsfb_open(&w,&h,&stride,wscons_key,wscons_pointer);
++      if(!s->fb.frameBuffer)return FALSE;
++      s->width=w;s->height=h;s->fb.pixelStride=stride;s->fb.byteStride=stride*4;
++    }
++#else
++    s->fb.frameBuffer = calloc(s->height, s->fb.byteStride);
++    if (!s->fb.frameBuffer) return FALSE;
++    signal(SIGPIPE, SIG_IGN);
++    if (rfb_open(address, port, s->width, s->height,
++                 (uint32_t *)s->fb.frameBuffer, keyboard_event, pointer_event)) {
++        free(s->fb.frameBuffer); s->fb.frameBuffer = NULL; return FALSE;
++    }
++    ErrorF("Felix TinyX: RFB listening on %s:%u\n", address, port);
++#endif
++    return TRUE;
++}
++static void screen_fini(KdScreenInfo *s) {
++#ifdef FELIX_WSCONS
++    wsfb_close(); input_ready=0; s->fb.frameBuffer=NULL;
++#else
++    rfb_close(); input_ready = 0; free(s->fb.frameBuffer); s->fb.frameBuffer = NULL;
++#endif
++}
++static const KdCardFuncs remote_card = {
++    .cardinit = card_init, .scrinit = screen_init, .scrfini = screen_fini
++};
++void InitCard(char *name) {
++    if (kdCardInfo) FatalError("Xtinyremote supports one screen only\n");
++    KdCardInfoAdd(&remote_card, 0);
++}
++void InitOutput(ScreenInfo *info, int argc, char **argv) { KdInitOutput(info, argc, argv); }
++void InitInput(int argc, char **argv) {
++    defaultPointerControl.num = 1;
++    defaultPointerControl.den = 1;
++    defaultPointerControl.threshold = 0;
++    if (!kdMouseInfo) KdParseMouse("remote,5");
++    kdMouseInfo->emulateMiddleButton = FALSE;
++    kdMouseInfo->transformCoordinates = FALSE;
++    KdInitInput(&mouse_funcs, &keyboard_funcs); input_ready = 1;
++}
++void ddxUseMsg(void) {
++    KdUseMsg(); ErrorF("-rfbaddress IPv4  (default 127.0.0.1)\n-rfbport port     (default 5900)\n");
++}
++int ddxProcessArgument(int argc, char **argv, int i) {
++    if (!strcmp(argv[i], "-version")) { kdVersion("Xtinyremote"); exit(0); }
++    if (!strcmp(argv[i], "-rfbaddress") && i+1 < argc) { address = argv[i+1]; return 2; }
++    if (!strcmp(argv[i], "-rfbport") && i+1 < argc) {
++        char *end; unsigned long n = strtoul(argv[i+1], &end, 10);
++        if (*end || !n || n > 65535) FatalError("Invalid RFB port\n");
++        port = n; return 2;
++    }
++    return KdProcessArgument(argc, argv, i);
++}
+diff --git a/kdrive/remote/rfb.c b/kdrive/remote/rfb.c
+new file mode 100755
+index 0000000..ae7bf7a
+--- /dev/null
++++ b/kdrive/remote/rfb.c
+@@ -0,0 +1,207 @@
++/* Felix RFB 3.3/3.7/3.8 server; raw true-color encoding, one viewer.
++ * SPDX-License-Identifier: GPL-3.0-or-later
++ * All sockets are nonblocking. A slow/malformed viewer cannot block X.
++ * This deliberately has no authentication: bind to loopback, or use an
++ * isolated guest network with a loopback-only host port forward.
++ */
++#include "rfb.h"
++#include <sys/types.h>
++#include <sys/socket.h>
++#include <netinet/in.h>
++#include <arpa/inet.h>
++#include <unistd.h>
++#include <fcntl.h>
++#include <errno.h>
++#include <stdlib.h>
++#include <string.h>
++
++static int listener = -1, client = -1, phase, version;
++static unsigned width, height, bpp, big, redmax, greenmax, bluemax;
++static unsigned redshift, greenshift, blueshift;
++static uint32_t *framebuffer;
++static void (*on_key)(uint32_t, int);
++static void (*on_pointer)(unsigned, unsigned, unsigned);
++static unsigned char input[65536], *output;
++static size_t used, outlen, sent, capacity;
++static int requested;
++static unsigned rx, ry, rw, rh;
++
++static unsigned get16(const unsigned char *p) { return (p[0] << 8) | p[1]; }
++static uint32_t get32(const unsigned char *p) {
++    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | (p[2] << 8) | p[3];
++}
++static void put16(unsigned char *p, unsigned n) { p[0] = n >> 8; p[1] = n; }
++static void put32(unsigned char *p, uint32_t n) {
++    p[0] = n >> 24; p[1] = n >> 16; p[2] = n >> 8; p[3] = n;
++}
++static void disconnect(void) {
++    if (client >= 0) close(client);
++    client = -1; used = outlen = sent = 0; requested = 0;
++    /* Adapter releases all held keys and mouse buttons on disconnect. */
++    if (on_key) on_key(0, 0);
++    if (on_pointer) on_pointer(0, 0, 0);
++}
++static int nonblock(int fd) {
++    int flags = fcntl(fd, F_GETFL);
++    return flags < 0 ? -1 : fcntl(fd, F_SETFL, flags | O_NONBLOCK);
++}
++static int queue(const void *data, size_t length) {
++    if (length > capacity - outlen) { disconnect(); return 0; }
++    memcpy(output + outlen, data, length); outlen += length; return 1;
++}
++static void flush(void) {
++    while (client >= 0 && sent < outlen) {
++        ssize_t n = send(client, output + sent, outlen - sent, 0);
++        if (n > 0) sent += (size_t)n;
++        else if (n < 0 && errno == EINTR) continue;
++        else if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) return;
++        else { disconnect(); return; }
++    }
++    if (sent == outlen) sent = outlen = 0;
++}
++static void server_init(void) {
++    unsigned char packet[29] = {0};
++    put16(packet, width); put16(packet + 2, height);
++    packet[4] = 32; packet[5] = 24; packet[7] = 1;
++    put16(packet + 8, 255); put16(packet + 10, 255); put16(packet + 12, 255);
++    packet[14] = 16; packet[15] = 8;
++    put32(packet + 20, 5); memcpy(packet + 24, "Felix", 5);
++    queue(packet, sizeof(packet));
++    bpp = 32; big = 0; redmax = greenmax = bluemax = 255;
++    redshift = 16; greenshift = 8; blueshift = 0;
++}
++static int valid_channel(unsigned max, unsigned shift) {
++    unsigned bits = 0, n = max;
++    if (!n || (n & (n + 1))) return 0;
++    while (n) { bits++; n >>= 1; }
++    return shift < bpp && bits + shift <= bpp;
++}
++static void frame(void) {
++    unsigned char header[16] = {0};
++    unsigned x, y, k, bytes = bpp / 8;
++    if (outlen || !requested) return;
++    requested = 0;
++    put16(header + 2, 1); put16(header + 4, rx); put16(header + 6, ry);
++    put16(header + 8, rw); put16(header + 10, rh);
++    queue(header, sizeof(header));
++    for (y = ry; y < ry + rh; y++) for (x = rx; x < rx + rw; x++) {
++        uint32_t p = framebuffer[y * width + x];
++        uint32_t v = ((((p >> 16) & 255) * redmax / 255) << redshift)
++                   | ((((p >> 8) & 255) * greenmax / 255) << greenshift)
++                   | (((p & 255) * bluemax / 255) << blueshift);
++        for (k = 0; k < bytes; k++)
++            output[outlen++] = v >> (8 * (big ? bytes - 1 - k : k));
++    }
++}
++static void parse(void) {
++    while (client >= 0 && used) {
++        size_t length;
++        if (phase == 0) {
++            if (used < 12) return;
++            if (!memcmp(input, "RFB 003.003\n", 12)) version = 3;
++            else if (!memcmp(input, "RFB 003.007\n", 12)) version = 7;
++            else if (!memcmp(input, "RFB 003.008\n", 12)) version = 8;
++            else { disconnect(); return; }
++            if (version == 3) { const unsigned char sec[] = {0,0,0,1}; queue(sec, 4); phase = 2; }
++            else { const unsigned char sec[] = {1,1}; queue(sec, 2); phase = 1; }
++            length = 12;
++        } else if (phase == 1) {
++            if (input[0] != 1) { disconnect(); return; }
++            if (version == 8) { const unsigned char ok[] = {0,0,0,0}; queue(ok, 4); }
++            length = 1; phase = 2;
++        } else if (phase == 2) {
++            length = 1; phase = 3; server_init();
++        } else {
++            switch (input[0]) {
++            case 0: /* SetPixelFormat */
++                length = 20; if (used < length) return;
++                bpp = input[4]; big = input[6];
++                redmax = get16(input + 8); greenmax = get16(input + 10); bluemax = get16(input + 12);
++                redshift = input[14]; greenshift = input[15]; blueshift = input[16];
++                if ((bpp != 8 && bpp != 16 && bpp != 32) || big > 1 || input[7] != 1
++                    || !valid_channel(redmax, redshift) || !valid_channel(greenmax, greenshift)
++                    || !valid_channel(bluemax, blueshift)
++                    || (((uint32_t)redmax << redshift) & ((uint32_t)greenmax << greenshift))
++                    || (((uint32_t)redmax << redshift) & ((uint32_t)bluemax << blueshift))
++                    || (((uint32_t)greenmax << greenshift) & ((uint32_t)bluemax << blueshift))) {
++                    disconnect(); return;
++                }
++                break;
++            case 2: /* SetEncodings: raw is mandatory in RFB. */
++                if (used < 4) return;
++                length = 4 + (size_t)get16(input + 2) * 4; break;
++            case 3: /* FramebufferUpdateRequest */
++                length = 10; if (used < length) return;
++                rx = get16(input + 2); ry = get16(input + 4);
++                rw = get16(input + 6); rh = get16(input + 8);
++                if (rx >= width || ry >= height || !rw || !rh) { disconnect(); return; }
++                if (rw > width - rx) rw = width - rx;
++                if (rh > height - ry) rh = height - ry;
++                requested = 1; break;
++            case 4: /* KeyEvent */
++                length = 8; if (used < length) return;
++                if (on_key) on_key(get32(input + 4), input[1] != 0); break;
++            case 5: /* PointerEvent */
++                length = 6; if (used < length) return;
++                { unsigned x = get16(input + 2), y = get16(input + 4);
++                  if (on_pointer) on_pointer(input[1] & 31,
++                      x < width ? x : width - 1, y < height ? y : height - 1); }
++                break;
++            case 6: /* Clipboard is deliberately ignored, with bounded storage. */
++                if (used < 8) return;
++                if (get32(input + 4) > sizeof(input) - 8) { disconnect(); return; }
++                length = 8 + get32(input + 4); break;
++            default: disconnect(); return;
++            }
++        }
++        if (length > sizeof(input)) { disconnect(); return; }
++        if (used < length) return;
++        if (client < 0) return;
++        used -= length; memmove(input, input + length, used);
++    }
++}
++int rfb_open(const char *address, unsigned port, unsigned w, unsigned h,
++             uint32_t *pixels, void (*key)(uint32_t, int),
++             void (*pointer)(unsigned, unsigned, unsigned)) {
++    struct sockaddr_in addr;
++    int one = 1;
++    if (!w || !h || w > 2048 || h > 2048 || !port || port > 65535) return -1;
++    memset(&addr, 0, sizeof(addr)); addr.sin_family = AF_INET; addr.sin_port = htons(port);
++    if (inet_pton(AF_INET, address, &addr.sin_addr) != 1) return -1;
++    width = w; height = h; framebuffer = pixels; on_key = key; on_pointer = pointer;
++    capacity = (size_t)w * h * 4 + 4096;
++    output = malloc(capacity); if (!output) return -1;
++    listener = socket(AF_INET, SOCK_STREAM, 0);
++    if (listener < 0) { rfb_close(); return -1; }
++    setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
++    if (nonblock(listener) || bind(listener, (struct sockaddr *)&addr, sizeof(addr)) || listen(listener, 1)) {
++        rfb_close(); return -1;
++    }
++    return 0;
++}
++void rfb_poll(void) {
++    if (client < 0) {
++        client = accept(listener, NULL, NULL);
++        if (client < 0) return;
++        if (nonblock(client)) { disconnect(); return; }
++        phase = 0; used = outlen = sent = 0;
++        queue("RFB 003.008\n", 12);
++    }
++    flush();
++    if (client < 0) return;
++    /* Bound per-tick work even if the peer continuously sends messages. */
++    { unsigned budget;
++      for (budget = 0; budget < 8; budget++) {
++        ssize_t n = recv(client, input + used, sizeof(input) - used, 0);
++        if (n > 0) { used += n; parse(); if (client < 0) return; }
++        else if (n < 0 && errno == EINTR) continue;
++        else if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) break;
++        else { disconnect(); return; }
++      }
++    }
++    frame(); flush();
++}
++void rfb_close(void) {
++    disconnect(); if (listener >= 0) close(listener); listener = -1;
++    free(output); output = NULL; capacity = 0;
++}
+diff --git a/kdrive/remote/rfb.h b/kdrive/remote/rfb.h
+new file mode 100755
+index 0000000..14e25d6
+--- /dev/null
++++ b/kdrive/remote/rfb.h
+@@ -0,0 +1,10 @@
++/* Felix TinyX remote framebuffer backend. SPDX-License-Identifier: GPL-3.0-or-later */
++#ifndef FELIX_RFB_H
++#define FELIX_RFB_H
++#include <stdint.h>
++int rfb_open(const char *address, unsigned port, unsigned width, unsigned height,
++             uint32_t *pixels, void (*key)(uint32_t, int),
++             void (*pointer)(unsigned, unsigned, unsigned));
++void rfb_poll(void);
++void rfb_close(void);
++#endif
+diff --git a/kdrive/remote/wsfb.c b/kdrive/remote/wsfb.c
+new file mode 100755
+index 0000000..949eb12
+--- /dev/null
++++ b/kdrive/remote/wsfb.c
+@@ -0,0 +1,95 @@
++/* Native NetBSD framebuffer and wscons input for the Felix ISO.
++ * SPDX-License-Identifier: GPL-3.0-or-later
++ * Target: QEMU standard VGA, bootloader VESA 1024x768x32, PC XT keyboard.
++ */
++#include "wsfb.h"
++#include <sys/types.h>
++#include <sys/ioctl.h>
++#include <sys/mman.h>
++#include <dev/wscons/wsconsio.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <stddef.h>
++#include <stdio.h>
++
++static int displayfd=-1, keyboardfd=-1, mousefd=-1;
++static size_t bytes;
++static uint32_t *pixels;
++static unsigned buttons;
++static void (*key_event)(uint32_t,int);
++static void (*mouse_event)(unsigned,int,int);
++
++uint32_t *wsfb_open(unsigned *width,unsigned *height,unsigned *stride,
++                    void (*key)(uint32_t,int),void (*mouse)(unsigned,int,int)) {
++    struct wsdisplay_fbinfo info;
++    unsigned type;
++    int mode=WSDISPLAYIO_MODE_DUMBFB, pitch, version=WSKBDIO_EVENT_VERSION;
++    key_event=key;mouse_event=mouse;
++    displayfd=open("/dev/ttyE0",O_RDWR);
++    if(displayfd<0)goto fail;
++    if(ioctl(displayfd,WSDISPLAYIO_GINFO,&info)<0 || info.depth!=32
++       || info.width>2048 || info.height>2048 || !info.width || !info.height)goto fail;
++    if(ioctl(displayfd,WSDISPLAYIO_LINEBYTES,&pitch)<0 || pitch<(int)info.width*4 || pitch>32768 || pitch%4)goto fail;
++    if(ioctl(displayfd,WSDISPLAYIO_SMODE,&mode)<0)goto fail;
++    bytes=(size_t)pitch*info.height;
++    pixels=mmap(NULL,bytes,PROT_READ|PROT_WRITE,MAP_SHARED,displayfd,0);
++    if(pixels==MAP_FAILED){pixels=NULL;goto fail;}
++    keyboardfd=open("/dev/wskbd0",O_RDWR|O_NONBLOCK);
++    mousefd=open("/dev/wsmouse0",O_RDWR|O_NONBLOCK);
++    if(keyboardfd<0 || mousefd<0)goto fail;
++    if(ioctl(keyboardfd,WSKBDIO_GTYPE,&type)<0 || (type!=WSKBD_TYPE_PC_XT && type!=WSKBD_TYPE_USB))goto fail;
++    if(ioctl(keyboardfd,WSKBDIO_SETVERSION,&version)<0 || ioctl(mousefd,WSMOUSEIO_SETVERSION,&version)<0)goto fail;
++    *width=info.width;*height=info.height;*stride=pitch/4;
++    return pixels;
++fail:
++    perror("Felix wscons initialization");wsfb_close();return NULL;
++}
++static int scan_code(int scan) {
++    if(scan<128)return scan;
++    switch(scan) {
++    case 0x9c:return 28;case 0x9d:return 97;case 0xb5:return 53;
++    case 0xb8:return 100;case 0xc7:return 102;case 0xc8:return 103;
++    case 0xc9:return 104;case 0xcb:return 105;case 0xcd:return 106;
++    case 0xcf:return 107;case 0xd0:return 108;case 0xd1:return 109;
++    case 0xd2:return 110;case 0xd3:return 111;case 0xdb:return 125;
++    case 0xdc:return 126;default:return -1;
++    }
++}
++void wsfb_poll(void) {
++    struct wscons_event events[32];
++    ssize_t n;unsigned i;
++    if(keyboardfd<0 || mousefd<0)return;
++    n=read(keyboardfd,events,sizeof(events));
++    if(n>0)for(i=0;i<(size_t)n/sizeof(events[0]);i++) {
++        int scan=scan_code(events[i].value);
++        if(events[i].type==WSCONS_EVENT_ALL_KEYS_UP)key_event(0xffffffff,0);
++        else if(scan>=0 && (events[i].type==WSCONS_EVENT_KEY_DOWN || events[i].type==WSCONS_EVENT_KEY_UP))
++            key_event(scan,events[i].type==WSCONS_EVENT_KEY_DOWN);
++    }
++    n=read(mousefd,events,sizeof(events));
++    if(n>0)for(i=0;i<(size_t)n/sizeof(events[0]);i++) {
++        int value=events[i].value,dx=0,dy=0;
++        switch(events[i].type) {
++        case WSCONS_EVENT_MOUSE_DOWN:if(value>=0 && value<3)buttons|=1u<<value;break;
++        case WSCONS_EVENT_MOUSE_UP:if(value>=0 && value<3)buttons&=~(1u<<value);break;
++        case WSCONS_EVENT_MOUSE_DELTA_X:dx=value;break;
++        case WSCONS_EVENT_MOUSE_DELTA_Y:dy=-value;break;
++        case WSCONS_EVENT_MOUSE_DELTA_Z:
++            mouse_event(buttons|(value>0?16:8),0,0);mouse_event(buttons,0,0);continue;
++        default:continue;
++        }
++        mouse_event(buttons,dx,dy);
++    }
++}
++void wsfb_bell(int volume,int pitch,int duration) {
++    struct wskbd_bell_data bell={WSKBD_BELL_DOALL,pitch,duration,volume};
++    if(keyboardfd>=0)ioctl(keyboardfd,WSKBDIO_COMPLEXBELL,&bell);
++}
++void wsfb_close(void) {
++    int mode=WSDISPLAYIO_MODE_EMUL;
++    if(keyboardfd>=0)close(keyboardfd);
++    if(mousefd>=0)close(mousefd);
++    if(pixels)munmap(pixels,bytes);
++    if(displayfd>=0){ioctl(displayfd,WSDISPLAYIO_SMODE,&mode);close(displayfd);}
++    keyboardfd=mousefd=displayfd=-1;pixels=NULL;
++}
+diff --git a/kdrive/remote/wsfb.h b/kdrive/remote/wsfb.h
+new file mode 100755
+index 0000000..dfb5111
+--- /dev/null
++++ b/kdrive/remote/wsfb.h
+@@ -0,0 +1,10 @@
++/* Felix NetBSD wscons backend. SPDX-License-Identifier: GPL-3.0-or-later */
++#ifndef FELIX_WSFB_H
++#define FELIX_WSFB_H
++#include <stdint.h>
++uint32_t *wsfb_open(unsigned *, unsigned *, unsigned *,
++                    void (*)(uint32_t, int), void (*)(unsigned, int, int));
++void wsfb_poll(void);
++void wsfb_close(void);
++void wsfb_bell(int volume, int pitch, int duration);
++#endif

@@ -1,0 +1,221 @@
+diff --git a/Frame.C b/Frame.C
+index 33ead9b..d46894a 100644
+--- a/Frame.C
++++ b/Frame.C
+@@ -17,13 +17,14 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <FL/fl_draw.H>
++#include "Glass.H"
+ #if FL_API_VERSION >= 10400
+ #  if FLTK_USE_CAIRO
+ #    include <cairo/cairo-xlib.h>
+ #  endif
+ #endif
+ 
+-#ifndef HAVE_XFT
++#if !defined(HAVE_XFT) && !defined(TOPSIDE)
+ #include "Rotated.H" // text rotation code; not supported by non-Xft FLTK 1.3.x
+ #endif
+ 
+@@ -485,12 +486,8 @@ int Frame::force_y_onscreen(int Y, int H) {
+ 
+ Frame::~Frame() {
+ 
+-  // It is possible for the frame to be destroyed while the menu is
+-  // popped-up, and the menu will still contain a pointer to it.  To
+-  // fix this the menu checks the state_ location for a legal and
+-  // non-withdrawn state value before doing anything.  This should
+-  // be reliable unless something reallocates the memory and writes
+-  // a legal state value to this location:
++  // Menus may still contain this pointer. Their callbacks and label
++  // handlers check membership in the live list before dereferencing it.
+   state_ = UNMAPPED;
+ 
+   // remove any pointers to this:
+@@ -1164,7 +1161,9 @@ void Frame::set_size(int nx, int ny, int nw, int nh, int warp) {
+   if (warp == 3 && !DoNotWarp && (dx || dy))
+     XWarpPointer(fl_display, None,None,0,0,0,0, dx, dy);
+   if (nw > dwidth) sendConfigureNotify();
+-  XSync(fl_display,0);
++  // Submit geometry in order without waiting for a server reply on each drag.
++  // No result is consumed here; errors still reach the normal X handler.
++  XFlush(fl_display);
+ }
+ 
+ void Frame::sendConfigureNotify() const {
+@@ -1435,39 +1434,22 @@ void Frame::save_protocol() {
+ #ifdef TOPSIDE
+ void Frame::draw() {
+   if (flag(NO_BORDER)) return;
+-  //ML--------------------- Paint opaque titlebar background
+-	  labelcolor(fl_contrast(FL_FOREGROUND_COLOR, FL_BACKGROUND2_COLOR));
+-	  if (active()) {
+-	 	 fl_rectf(2, 2, w() - 4, h()-4,
+-		   fl_color_average(FL_BACKGROUND2_COLOR, FL_WHITE, 0.6)
+-			);
+-      }
+-      else {
+-        fl_rectf(2, 2, w() - 4, h()-4,
+-		FL_BACKGROUND2_COLOR
+-					);
+-      }
+-	  // ------------------ML
+-
+-  if (damage() != FL_DAMAGE_CHILD) {
+-
+-#ifdef ACTIVE_COLOR
+-    fl_frame2(active() ? "AAAAJJWW" : "AAAAJJWWNNTT",0,0,w(),h());
+-    if (active()) {
+-      fl_color(FL_GRAY_RAMP+('N'-'A'));
+-      fl_xyline(2, h()-3, w()-3, 2);
+-    }
+-#else
+-    fl_frame("AAAAWWJJTTNN",0,0,w(),h());
+-#endif
+-    if (!flag(THIN_BORDER) && label_h > 3) {
++  labelcolor(active()?fl_rgb_color(35,56,76):fl_rgb_color(99,114,128));
++  fl_color(115,140,162);fl_rect(0,0,w(),h());
++  fl_color(active()?fl_rgb_color(224,239,250):fl_rgb_color(217,225,232));
++  fl_rect(1,1,w()-2,h()-2);
++  if (!flag(THIN_BORDER)) {
++    felix_glass(2,2,w()-4,top-2,active());
++    if(label() && label_h>3) {
++      fl_font(TITLE_FONT_SLOT,TitleFontSz);
++      fl_color(255,255,255);
++      fl_draw(label(),label_x+1,TopSz+1,label_w,ButtonSz,Fl_Align(FL_ALIGN_LEFT|FL_ALIGN_CLIP),0,0);
+       fl_color(labelcolor());
+-      fl_font(TITLE_FONT_SLOT, TitleFontSz);
+-      fl_draw(label(), label_x, TopSz, label_w, ButtonSz,
+-		      Fl_Align(FL_ALIGN_LEFT|FL_ALIGN_CLIP), 0, 0);
++      fl_draw(label(),label_x,TopSz,label_w,ButtonSz,Fl_Align(FL_ALIGN_LEFT|FL_ALIGN_CLIP),0,0);
+     }
++    // The title repaint also covers the buttons, including partial damage.
++    for(int i=0;i<children();i++) if(child(i)->visible()) draw_child(*child(i));
+   }
+-  if (!flag(THIN_BORDER)) Fl_Window::draw();
+ }
+ #else
+ void Frame::draw() {
+@@ -1476,7 +1458,7 @@ void Frame::draw() {
+ 	  labelcolor(fl_contrast(FL_FOREGROUND_COLOR, FL_BACKGROUND2_COLOR));
+ 	  if (active()) {
+ 	 	 fl_rectf(2, 2, w() - 4, h()-4,
+-		 fl_color_average(FL_BACKGROUND2_COLOR, FL_WHITE, 0.6) ); // ML
++		 FL_SELECTION_COLOR ); // ML
+       }
+       else {
+         fl_rectf(2, 2, w() - 4, h()-4, FL_BACKGROUND2_COLOR); // ML
+@@ -1555,9 +1537,7 @@ void Frame::redraw_clock() {
+ void FrameButton::draw() {
+   const int x = this->x();
+   const int y = this->y();
+-  Fl_Widget::draw_box(value() ? FL_DOWN_FRAME : FL_UP_FRAME,
+-					  value() ? fl_darker(FL_BACKGROUND2_COLOR)
+-							  : fl_color_average(FL_BACKGROUND2_COLOR, FL_WHITE, 0.6)); // ML
++  felix_glass(x,y,w(),h(),((Frame*)parent())->active(),value(),label() && label()[0]=='X');
+   fl_line_style(FL_SOLID, (2.0 * sf + 0.6));
+   fl_color(parent()->labelcolor());
+   int m = (min(w(),h()) + 1) / 2;
+diff --git a/Menu.C b/Menu.C
+index 6fcd3b7..36a94c6 100644
+--- a/Menu.C
++++ b/Menu.C
+@@ -20,15 +20,18 @@
+ #include <dirent.h>
+ #include <sys/stat.h>
+ 
+-// it is possible for the window to be deleted or withdrawn while
+-// the menu is up.  This will detect that case (with reasonable
+-// reliability):
++// Popup menus run a nested event loop: their Frame pointers can outlive
++// a client window. Check the live list before dereferencing a menu pointer.
+ static int
+ window_deleted(Frame* c)
+ {
+-  return c->state() != NORMAL
+-    && c->state() != ICONIC
+-    && c->state() != OTHER_DESKTOP;
++  for (Frame* live = Frame::first; live; live = live->next) {
++    if (live == c)
++      return live->state() != NORMAL
++        && live->state() != ICONIC
++        && live->state() != OTHER_DESKTOP;
++  }
++  return 1;
+ }
+ 
+ static void
+@@ -229,10 +232,7 @@ exit_cb(Fl_Widget*, void*)
+ static void
+ logout_cb(Fl_Widget*, void*)
+ {
+-  int pid=0;
+-  if (( pid=fork()) == 0) {
+-    execlp("exittc","exittc", NULL);
+-  }
++  exit_cb(0, 0);
+ }
+ 
+ ////////////////////////////////////////////////////////////////
+@@ -273,7 +273,7 @@ static Fl_Menu_Item other_menu_items[] = {
+ #if DESKTOPS
+   {"New desktop", 0, new_desktop_cb, 0, 0, 0, 0, MENU_FONT_SIZE},
+ #endif
+-  {"Exit", 0, logout_cb, 0, 0, 0, 0, MENU_FONT_SIZE},
++  {"Exit to console", 0, logout_cb, 0, 0, 0, 0, MENU_FONT_SIZE},
+   {0}};
+ #define num_other_items (sizeof(other_menu_items)/sizeof(Fl_Menu_Item))
+ 
+@@ -451,7 +451,9 @@ ShowTabMenu(int tab)
+ #if WMX_MENU_ITEMS
+   load_wmx();
+   if (num_wmx) {
++#if XTERM_MENU_ITEM
+     n -= 1; // delete "new xterm"
++#endif
+     // add wmx items
+     int	level = 0;
+     for (int i=0; i<num_wmx; i++) {
+diff --git a/main.C b/main.C
+index 7285cc1..d75e279 100644
+--- a/main.C
++++ b/main.C
+@@ -287,6 +287,10 @@ static void initialize() {
+ #ifdef ACTIVE_COLOR
+   Fl::set_color(FL_SELECTION_COLOR, ACTIVE_COLOR<<8);
+ #endif
++  Fl::scheme("none");
++  Fl::background(235,242,247);
++  Fl::background2(255,255,255);
++  Fl::foreground(34,52,69);
+ 
+   // Gnome crap:
+   // First create a window that can be watched to see if wm dies:
+diff --git a/Glass.H b/Glass.H
+new file mode 100755
+index 0000000..0e27fa7
+--- /dev/null
++++ b/Glass.H
+@@ -0,0 +1,21 @@
++#ifndef FELIX_GLASS_H
++#define FELIX_GLASS_H
++#include <FL/fl_draw.H>
++// Gentle Aqua-inspired reflection, without textures or a compositor.
++static void felix_glass(int x,int y,int w,int h,bool active,bool pressed=false,bool close=false) {
++  if(w<2 || h<2)return;
++  for(int row=0;row<h;row++) {
++    int t=255*row/(h-1);
++    int reflection=row<h/2?12:0;
++    int r=240-47*t/255+reflection,g=242-32*t/255+reflection,b=243-17*t/255+reflection;
++    if(!active){r=239-20*t/255;g=244-20*t/255;b=248-20*t/255;}
++    if(close){r=250-20*t/255;g=174-81*t/255;b=169-80*t/255;}
++    if(pressed){r=r*4/5;g=g*4/5;b=b*4/5;}
++    fl_color((uchar)r,(uchar)g,(uchar)b);
++    fl_xyline(x,y+row,x+w-1);
++  }
++  fl_color(143,165,185);fl_rect(x,y,w,h);
++  fl_color(active?fl_rgb_color(255,255,255):fl_rgb_color(247,249,251));
++  fl_xyline(x+1,y+1,x+w-2);fl_yxline(x+1,y+1,y+h-2);
++}
++#endif

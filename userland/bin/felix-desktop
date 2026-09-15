@@ -1,0 +1,12 @@
+#!/bin/sh
+export DISPLAY=:0
+cd "$HOME"
+felix-apps settings --apply || :
+flwm &
+wm=$!
+felix-dock >/tmp/wbar.log 2>&1 &
+dock=$!
+felix-apps clock >/tmp/clock.log 2>&1 &
+clock=$!
+trap 'kill "$wm" "$dock" "$clock" 2>/dev/null || :' EXIT
+wait "$wm"

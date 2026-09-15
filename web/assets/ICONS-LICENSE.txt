@@ -1,0 +1,16 @@
+Tango Desktop Project icon theme 0.8.90, from Alpine tango-icon-theme 0.8.90-r5.
+Project: https://tango.freedesktop.org/
+Package: https://pkgs.alpinelinux.org/package/v3.23/community/x86/tango-icon-theme
+Alpine declares this package CC-BY-SA-2.5:
+https://creativecommons.org/licenses/by-sa/2.5/
+
+The five app icons are unmodified copies of these Tango 32x32 PNG files:
+apps/utilities-terminal.png -> terminal.png
+apps/accessories-text-editor.png -> notepad.png
+categories/preferences-system.png -> settings.png
+apps/system-software-update.png -> applications.png
+devices/network-wireless.png -> wifi.png
+
+Original icon authors: Tango Desktop Project contributors.
+Only the filenames were changed. The icons retain their original license.
+The generated Felix gradient, text branding and dock plate are MIT-licensed.
