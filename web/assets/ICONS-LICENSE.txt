@@ -4,7 +4,7 @@ Package: https://pkgs.alpinelinux.org/package/v3.23/community/x86/tango-icon-the
 Alpine declares this package CC-BY-SA-2.5:
 https://creativecommons.org/licenses/by-sa/2.5/
 
-The five app icons are unmodified copies of these Tango 32x32 PNG files:
+The five app icons are resized to 24x24 and losslessly PNG-optimized from these Tango 32x32 files:
 apps/utilities-terminal.png -> terminal.png
 apps/accessories-text-editor.png -> notepad.png
 categories/preferences-system.png -> settings.png
@@ -12,5 +12,5 @@ apps/system-software-update.png -> applications.png
 devices/network-wireless.png -> wifi.png
 
 Original icon authors: Tango Desktop Project contributors.
-Only the filenames were changed. The icons retain their original license.
+The filenames and dimensions were changed. The icons retain their original license.
 The generated Felix gradient, text branding and dock plate are MIT-licensed.

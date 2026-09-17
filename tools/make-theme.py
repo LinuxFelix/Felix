@@ -12,7 +12,7 @@ font=builder/'usr/share/fonts/dejavu/DejaVuSans.ttf'
 shutil.copyfile(font,out/'DejaVuSans.ttf')
 icons=builder/'usr/share/icons/Tango/32x32'
 for name,source in {'terminal':'apps/utilities-terminal.png','notepad':'apps/accessories-text-editor.png','settings':'categories/preferences-system.png','applications':'apps/system-software-update.png','wifi':'devices/network-wireless.png'}.items():
-    shutil.copyfile(icons/source,out/(name+'.png'))
+    Image.open(icons/source).resize((24,24),Image.Resampling.LANCZOS).save(out/(name+'.png'),optimize=True)
 def glass_wallpaper(top, bottom):
     """Pre-render reflections and ordered RGB565 dithering; no desktop timer."""
     image=Image.new('RGB',(1024,768))
@@ -45,19 +45,19 @@ small=ImageFont.truetype(str(font),11)
 text='small system. your space.'
 b=draw.textbbox((0,0),text,font=small)
 draw.text(((1024-b[2])/2,414),text,font=small,fill=(220,242,252))
-image.save(out/'wallpaper.ppm')
+image.save(out/'wallpaper.png',optimize=True)
 for filename,top,bottom in (
-    ('midnight.ppm',(13,25,49),(54,84,114)),
-    ('silver.ppm',(107,133,156),(209,227,235))):
+    ('midnight.png',(13,25,49),(54,84,114)),
+    ('silver.png',(107,133,156),(209,227,235))):
     variant=glass_wallpaper(top,bottom)
     label=ImageDraw.Draw(variant)
     label.text((x,y),'felix',font=font_big,fill=(235,248,255))
-    variant.save(out/filename)
+    variant.save(out/filename,optimize=True)
 splash=Image.new('RGB',(640,480));d=ImageDraw.Draw(splash)
 for y in range(480):
     t=y/479;d.line((0,y,639,y),fill=tuple(round(a+(b-a)*t) for a,b in zip((34,88,140),(117,183,216))))
 d.text((58,32),'felix',font=ImageFont.truetype(str(font),42),fill=(223,230,236))
-d.text((60,85),'VERSION 1.0  /  32-BIT',font=small,fill=(161,181,200))
+d.text((60,85),'VERSION 1.1  /  32-BIT',font=small,fill=(161,181,200))
 splash.save(out/'boot.png')
 dock=Image.new('RGBA',(128,64));d=ImageDraw.Draw(dock)
 d.rounded_rectangle((1,1,126,62),radius=14,fill=(166,202,227,175),outline=(244,252,255,215),width=1)
@@ -65,4 +65,8 @@ d.rounded_rectangle((4,3,123,30),radius=11,fill=(240,251,255,120))
 d.line((17,3,110,3),fill=(255,255,255,220),width=1)
 dock.save(out/'dock.png')
 shutil.copyfile(font.parent/'DejaVuSansMono.ttf',out/'DejaVuSansMono.ttf')
+for name in ('wallpaper.png','midnight.png','silver.png'):
+    size=(out/name).stat().st_size
+    if size>600000:raise RuntimeError(f'{name} exceeds the 600 KB wallpaper budget')
+    print(f'{name}: {size} bytes')
 print('THEME_ASSETS_OK')

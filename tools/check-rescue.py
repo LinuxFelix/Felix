@@ -3,7 +3,7 @@
 import pathlib,socket,subprocess,time
 root=pathlib.Path(__file__).resolve().parents[1]
 out=root/'build/release'
-p=subprocess.Popen(['qemu-system-i386','-accel','kvm','-cpu','host','-m','512','-cdrom',str(out/'felix-1.0-x86.iso'),'-boot','d','-vga','std','-nic','user,model=e1000','-display','none','-serial','tcp:127.0.0.1:2314,server=on,wait=off','-no-reboot'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+p=subprocess.Popen(['qemu-system-i386','-accel','kvm','-cpu','host','-m','512','-cdrom',str(out/'felix-1.1-x86.iso'),'-boot','d','-vga','std','-nic','user,model=e1000','-display','none','-serial','tcp:127.0.0.1:2314,server=on,wait=off','-no-reboot'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 s=None;data=bytearray()
 try:
     for _ in range(50):

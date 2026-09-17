@@ -11,7 +11,6 @@ mount -t tmpfs -o mode=1777 tmpfs /dev/shm
 hostname felix
 mdev -s
 ip link set lo up
-ip link set eth0 up
-udhcpc -i eth0 -n -t 5 -T 2 >/run/ethernet.log 2>&1 &
+/usr/bin/felix-ethernet &
 account=$(cat /etc/felix-installed-user)
 HOME=/home/$account /usr/bin/wificonfig --autoconnect >/run/felix-wifi/autoconnect.log 2>&1 &

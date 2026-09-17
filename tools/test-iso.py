@@ -19,7 +19,7 @@ def connect(port, proc):
 def main():
     with open(OUT/'qemu-test.log','wb') as log:
         p=subprocess.Popen(['qemu-system-i386','-accel','kvm','-cpu','host','-m','512',
-            '-smp','1','-cdrom',str(OUT/'felix-1.0-x86.iso'),'-boot','d','-vga','std',
+            '-smp','1','-cdrom',str(OUT/'felix-1.1-x86.iso'),'-boot','d','-vga','std',
             '-nic','user,model=e1000','-display','none','-vnc','127.0.0.1:19',
             '-serial','tcp:127.0.0.1:2311,server=on,wait=off','-no-reboot'],stdout=log,stderr=log)
         s=connect(2311,p)

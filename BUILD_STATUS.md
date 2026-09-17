@@ -1,5 +1,15 @@
 # Build status
 
+## Felix 1.1 preview — 2026-09-17
+
+The preview ISO is built at `build/release/felix-1.1-x86.iso`: **25,165,824 bytes (24 MiB)**, down from 1.0's 28,311,552 bytes. SHA-256: `d9e895e965e85b92c6fac7827de5405b9e47c3f6675e0e640e6b2ceb5718613f`. The final cpio archive is **20,126,888 bytes**. The website download matches the ISO. The 1.0 ISO remains separate, and its kernel/rootfs metadata is preserved in `build/releases/1.0/`.
+
+Added Ethernet drivers and interface discovery, DHCP renewal/hotplug polling, adapter/cable/IP status in Settings, Wi-Fi hardware IDs and optional firmware downloads/reload controls, upward opening and downward titlebar-close animations, reduced motion, Notepad F3/Save As shortcuts and document status, PNG wallpapers, 24px Tango icons and a dependency-tracked PNG-only Imlib2 runtime. Wallpaper files are 29–34 KB each. See `RELEASE-1.1.md` for limitations and details.
+
+Passed on 1.1: desktop/font/terminal/clock and Wi-Fi hardware-window startup; actual upward animation and reduced-motion behavior; rapid destruction during opening; two text/startx cycles; 60 real popup openings and menu logout; 81 native sanitizer menu cycles; and DHCP with e1000, e1000e, RTL8139, PCnet, virtio-net-pci and VMXNET3. Installer verification used only a new disposable QEMU disk and passed mounted-drive refusal, two disk-only boots, non-root desktop, sudo and document persistence. Final cpio version/checksums and website ISO equality passed. The kernel configuration includes the required new drivers and still disables DRM and 64-bit mode.
+
+Logs: `build/1.1-{build,serial,final-serial,text,menu,memory,ethernet,installer,archive}.log`. The full Ethernet and menu runs preceded the final Wi-Fi-dialog/wording refinements; the same kernel/network service and flwm binaries were retained, and the final ISO passed desktop/motion/hardware-window startup and installer checks. Physical Ethernet/USB/Wi-Fi hardware and actual firmware-download/reload behavior have not been tested. This is a preview, not a claim of universal adapter support. No 1.1 VM screenshots were captured; the gallery remains clearly labeled 1.0.
+
 ## Felix 1.0 website screenshots
 
 At the user's request, five actual screenshots were captured from the verified

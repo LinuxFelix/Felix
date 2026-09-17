@@ -1,4 +1,9 @@
-# Felix 1.0
+# Felix 1.1 preview
+
+This branch develops Felix 1.1: broader networking, Wi-Fi hardware assistance,
+PNG wallpapers, reduced image size and lightweight window animations. See
+`RELEASE-1.1.md` and `BUILD_STATUS.md` for changes, measured size and validation.
+The tested Felix 1.0 release remains separate.
 
 Felix targets a **32-bit Linux 6.18.50 kernel**, TinyX **Xfbdev**, **flwm**, and native **FLTK 1.4.5** applications, including **WiFConfig**. Its blue glass-style desktop has a vertical **wbar** centered on the left, recognizable Tango app icons and a tinted **rxvt-unicode** terminal. PMDock is not shipped. The kernel starts from `make ARCH=x86 tinyconfig`; DRM remains disabled. Wireless, cfg80211/mac80211 and selected Wi-Fi drivers are enabled.
 
@@ -10,7 +15,7 @@ This is the Linux implementation requested after the original NetBSD prompt. `sm
 
 The JavaScript-free project website is in `web/`. Open `web/index.html` locally or serve the directory with a static web server. It includes Downloads, About and Screenshots, local DejaVu fonts, archived screenshots and a copy of the release ISO with its checksum. Run `python tools/build-web.py` after updating a release to refresh that copy.
 
-The output is `build/release/felix-1.0-x86.iso`.
+The output is `build/release/felix-1.1-x86.iso`.
 
 The visible Syslinux/ISOLINUX menu offers **Start Felix desktop**, **Start Felix with boot messages**, **Recovery shell (text mode)** and **Felix text mode (startx)**. The desktop entry starts automatically after eight seconds and selects the 1024×768 VESA mode. Arrow keys select an entry; Enter boots it; Tab edits its boot arguments.
 
@@ -28,7 +33,7 @@ cd D:\Laurynas\Felix
 Or use a BIOS/legacy VM with a standard VGA adapter, PS/2 input, an Intel e1000 wired NIC, one CPU and 512 MB RAM:
 
 ```sh
-qemu-system-i386 -m 512 -cdrom build/release/felix-1.0-x86.iso \
+qemu-system-i386 -m 512 -cdrom build/release/felix-1.1-x86.iso \
   -boot d -vga std -nic user,model=e1000 -serial stdio
 ```
 
@@ -37,13 +42,13 @@ The ISO also has a hybrid MBR. UEFI-only boot, USB input, sound, accelerated gra
 Right-click the desktop to open the flwm menu:
 
 * **Notepad** creates, opens and saves text documents. Ctrl+N, Ctrl+O and Ctrl+S are supported. It prompts before discarding edits and writes through a temporary file before replacing an existing document.
-* **Settings** changes mouse acceleration, the background color, a P6 PPM wallpaper, screen saver, keyboard repeat and bell volume. It also applies wired IPv4/DNS settings, sets UTC date/time, reports available space and shuts down the VM. Desktop settings are stored in `~/.felix/settings`; network and clock changes apply to the current session.
+* **Settings** changes mouse acceleration, the background color, a PNG or P6 PPM wallpaper, screen saver, keyboard repeat and bell volume. It also applies wired IPv4/DNS settings, sets UTC date/time, reports available space and shuts down the VM. Desktop settings are stored in `~/.felix/settings`; network and clock changes apply to the current session.
 * **WiFi Configuration** opens WiFConfig, also available from Settings → Network or the commands `wificonfig` and `wifconfig`. Enable an adapter, scan, choose an SSID, enter its password, and select **Save & connect**. It uses wpa_supplicant's local control socket for open, WPA/WPA2 Personal and WPA3 Personal networks. It supports hidden SSIDs, a country code, saved profiles, disconnect and forgetting networks. Enterprise/802.1X and WEP are not configured by this app. DHCP runs after authentication and renews the lease in the background.
 * **Applications** refreshes repository indexes, searches packages, previews dependencies, installs a named package and lists installed packages. Operations show their output in the window and run without blocking the UI. Installing extra software can grow the running system beyond the ISO's initial size budget. Package compatibility with this minimal X server and kernel varies; modern applications requiring DRM, Wayland or a full Xorg stack are not guaranteed to run.
 * **Run command** launches an installed graphical program by command name. Its output is written to `/tmp/felix-launch.log`. Terminal programs can run in the included `xterm` or the local serial shell.
 * **Terminal** launches Alpine rxvt-unicode with a blue-tinted transparent background, pale text, a pale aqua cursor and a left scrollbar. Its background extension samples the shared desktop wallpaper and updates when the window moves. This is wallpaper transparency, not compositor blur or transparency through other windows. DejaVu Sans Mono is used for terminal and editor text; DejaVu Sans is the default for app controls, flwm titles, menus and dock labels. FLTK uses Xft for scalable, antialiased text. The ordinary `xterm` command remains available as an opaque fallback.
 
-Wbar is built from the supplied `userland/wbar/` source. Five launchers open Terminal, Notepad, Settings, Applications and WiFConfig. `userland/share/wbar.cfg` defines its vertical, center-left placement, subtle zoom, translucent plate and labels. The app icons are unmodified Tango PNG assets; the reflective dock plate and dithered wallpapers with centered Felix branding are generated by `tools/make-theme.py`. Font and icon notices are included with the assets in `userland/share/theme/`. Windows can cover the dock; the same apps remain available from the desktop menu. An About window no longer opens automatically.
+Wbar is built from the supplied `userland/wbar/` source. Five launchers open Terminal, Notepad, Settings, Applications and WiFConfig. `userland/share/wbar.cfg` defines its vertical, center-left placement, subtle zoom, translucent plate and labels. The app icons are resized Tango PNG assets; the reflective dock plate and dithered wallpapers with centered Felix branding are generated by `tools/make-theme.py`. Font and icon notices are included with the assets in `userland/share/theme/`. Windows can cover the dock; the same apps remain available from the desktop menu. An About window no longer opens automatically.
 
 Settings → Desktop includes Ocean glass, Midnight glass and Silver mist wallpaper presets; choose one and select Save and apply. Notepad supports Ctrl+F search and optional word wrap, and starts file dialogs in the current user's Documents folder. Clicking the clock opens Settings.
 
@@ -113,11 +118,11 @@ Build outputs are under `build/release/`:
 
 * `initramfs.cpio.xz`: XZ-compressed newc cpio root filesystem used by the live ISO, preserving Unix permissions, ownership, symlinks and device nodes.
 * `vmlinuz` and `kernel.config`: kernel and effective configuration.
-* `felix-1.0-x86.iso` and its `.sha256` sidecar: bootable Syslinux ISO, produced by `make iso`.
+* `felix-1.1-x86.iso` and its `.sha256` sidecar: bootable Syslinux ISO, produced by `make iso`.
 * `rootfs-build.sha256`: checksums of the kernel and cpio root filesystem.
 * `staging-root.txt`: path to the expanded rootfs, retained under `/var/tmp/felix-linux/image.XXXXXX/root` on the Linux filesystem to preserve Unix metadata.
 
-Felix 1.0 uses cpio only; no tar rootfs is generated. The XZ compression keeps the boot image small. See `RELEASE-1.0.md` for the supported configuration and release checks.
+Felix 1.1 uses cpio only; no tar rootfs is generated. The XZ compression keeps the boot image small. See `RELEASE-1.1.md` for the supported configuration and release checks.
 
 `make rootfs` stops before ISO packaging and leaves any existing ISO unchanged. The archive is a live rootfs, not a replacement for the disk installer, which configures the installed root, account and bootloader. Build targets require a Debian/Linux environment; run them inside WSL rather than native Windows Make. `tools/build-iso.sh` remains available and delegates to `make iso`. `make website` updates the static site's copy of an existing release.
 
@@ -152,6 +157,6 @@ WiFConfig stores credentials in `~/.felix/wifi/<interface>.conf`, inside a priva
 
 `python3 tools/test-blit.py` compiles and tests TinyX's actual byte-copy path against immutable reference images for 1,080 overlapping rectangles. The earlier copy fix is retained. `tools/test-dock.py` targets the previous PMDock desktop and is historical; it is not the wbar release check. The current nonvisual check is `tools/check-serial.py`, which verifies desktop processes, wireless tools, root-pixmap metadata, center-left dock geometry and terminal PTY execution. The packaged image decoder also validates every theme PNG and wbar's font before ISO creation. Appearance and interaction are left to the user for visual review.
 
-In the serial shell, check `uname -m`, `ps`, `cat /tmp/tinyx.log`, `cat /tmp/network.log`, and `DISPLAY=:0 felix-root '#AEE1FF'`. Verify the menu, open the apps, save and reopen a text file, and use Settings to change the background. On the host, run `sha256sum -c felix-1.0-x86.iso.sha256` from `build/release`, or compare the file hash with its sidecar.
+In the serial shell, check `uname -m`, `ps`, `cat /tmp/tinyx.log`, `cat /tmp/network.log`, and `DISPLAY=:0 felix-root '#AEE1FF'`. Verify the menu, open the apps, save and reopen a text file, and use Settings to change the background. On the host, run `sha256sum -c felix-1.1-x86.iso.sha256` from `build/release`, or compare the file hash with its sidecar.
 
 The live ISO runs its desktop as root and has a serial debugging shell. The installed system runs the desktop as the created user, uses sudo for administration and requires a login on the serial console. X11 TCP listening is disabled in both modes.

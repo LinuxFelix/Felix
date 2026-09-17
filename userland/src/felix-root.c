@@ -1,4 +1,4 @@
-/* Solid color and P6 PPM wallpaper without an image library. MIT license. */
+/* Solid color and PNG wallpaper, with legacy P6 PPM support. MIT license. */
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <png.h>
 static int number(FILE *f) {
     int c,n=0,count=0;
     do { c=fgetc(f);if(c=='#'){while(c!='\n' && c!=EOF)c=fgetc(f);} } while(c!=EOF && isspace(c));
@@ -35,6 +36,17 @@ static int wallpaper(Display *d,const char *path) {
     FILE *f=fopen(path,"rb");int w,h,max,s=DefaultScreen(d),x,y;
     unsigned char *pixels;XImage *img;Pixmap pix;GC gc;
     if(!f)return 1;
+    unsigned char signature[8];size_t signature_size=fread(signature,1,8,f);rewind(f);
+    if(signature_size==8 && !png_sig_cmp(signature,0,8)) {
+        png_image png={0};png.version=PNG_IMAGE_VERSION;fclose(f);
+        if(!png_image_begin_read_from_file(&png,path))return 1;
+        if(!png.width || !png.height || png.width>8192 || png.height>8192){png_image_free(&png);return 1;}
+        w=png.width;h=png.height;png.format=PNG_FORMAT_RGB;
+        pixels=malloc(PNG_IMAGE_SIZE(png));
+        if(!pixels){png_image_free(&png);return 1;}
+        if(!png_image_finish_read(&png,NULL,pixels,0,NULL)){free(pixels);png_image_free(&png);return 1;}
+        png_image_free(&png);
+    } else {
     if(fgetc(f)!='P' || fgetc(f)!='6' || !isspace(fgetc(f))) {fclose(f);return 1;}
     w=number(f);h=number(f);max=number(f);
     if(w<1 || h<1 || w>8192 || h>8192 || max!=255) {fclose(f);return 1;}
@@ -42,6 +54,7 @@ static int wallpaper(Display *d,const char *path) {
     if(!pixels){fclose(f);return 1;}
     if(fread(pixels,3,(size_t)w*h,f)!=(size_t)w*h){free(pixels);fclose(f);return 1;}
     fclose(f);
+    }
     img=XCreateImage(d,DefaultVisual(d,s),DefaultDepth(d,s),ZPixmap,0,NULL,DisplayWidth(d,s),DisplayHeight(d,s),32,0);
     if(!img){free(pixels);return 1;}
     img->data=calloc(img->bytes_per_line,img->height);
@@ -73,7 +86,7 @@ int main(int argc,char **argv) {
         }
         XCloseDisplay(d);return result;
     }
-    if(argc==3 && !strcmp(argv[1],"--ppm"))result=wallpaper(d,argv[2]);
+    if(argc==3 && (!strcmp(argv[1],"--image") || !strcmp(argv[1],"--ppm")))result=wallpaper(d,argv[2]);
     else if(argc==2 && XParseColor(d,DefaultColormap(d,DefaultScreen(d)),argv[1],&color)
             && XAllocColor(d,DefaultColormap(d,DefaultScreen(d)),&color)) {
         int s=DefaultScreen(d);
@@ -83,6 +96,6 @@ int main(int argc,char **argv) {
         publish(d,pix);result=0;
     }
     if(!result)XClearWindow(d,DefaultRootWindow(d));
-    else fputs("usage: felix-root '#RRGGBB' | --ppm image.ppm (P6, maxval 255)\n",stderr);
+    else fputs("usage: felix-root '#RRGGBB' | --image wallpaper.png (also accepts P6 PPM)\n",stderr);
     XSync(d,False);XCloseDisplay(d);return result;
 }

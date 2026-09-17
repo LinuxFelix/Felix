@@ -15,7 +15,12 @@ cp /etc/resolv.conf "$stage/root/etc/resolv.conf"
 cp /etc/ssl/certs/ca-certificates.crt "$stage/root/etc/ssl/certs/ca-certificates.crt"
 mknod -m 666 "$stage/root/dev/null" c 1 3
 mknod -m 666 "$stage/root/dev/urandom" c 1 9
-chroot "$stage/root" apk add --no-cache libstdc++ libx11 libxext libxrandr libxrender libfontenc zlib ca-certificates-bundle xterm rxvt-unicode imlib2
+cp "$root/userland/build-imlib-minimal.sh" "$work/alpine/src/"
+chroot "$work/alpine" sh /src/build-imlib-minimal.sh
+cp "$work/alpine/out/imlib-keys/"*.rsa.pub "$stage/root/etc/apk/keys/"
+cp "$work/alpine/out/"felix-imlib2-*.apk "$stage/root/tmp/"
+chroot "$stage/root" sh -c 'apk add --no-cache /tmp/felix-imlib2-*.apk libstdc++ libx11 libxext libxrandr libxrender libfontenc zlib ca-certificates-bundle xterm rxvt-unicode'
+rm -f "$stage/root/tmp/"felix-imlib2-*.apk
 sh "$root/tools/pack-wifi.sh" "$stage/root"
 for binary in Xfbdev flwm felix-apps felix-root felix-about wbar; do cp "$work/alpine/out/$binary" "$stage/root/usr/bin/"; done
 cp "$root/userland/bin/felix-session" "$stage/root/usr/bin/"
@@ -38,7 +43,10 @@ mkdir -p "$stage/root/root/Documents" "$stage/root/usr/share/felix"
 mkdir -p "$stage/root/usr/share/felix/licenses"
 cp "$root/userland/linux/installed-extlinux.cfg" "$root/userland/linux/installed-inittab" "$stage/root/usr/share/felix/"
 sha256sum "$release/vmlinuz" > "$stage/root/usr/share/felix/kernel.sha256"
-cp -R "$root/userland/share/theme" "$stage/root/usr/share/felix/"
+mkdir -p "$stage/root/usr/share/felix/theme"
+cp "$root/userland/share/theme/"*.png "$root/userland/share/theme/"*.ttf "$root/userland/share/theme/"*.txt "$stage/root/usr/share/felix/theme/"
+cp "$root/userland/bin/felix-ethernet" "$stage/root/usr/bin/"
+chmod +x "$stage/root/usr/bin/felix-ethernet"
 mkdir -p "$stage/root/etc/fonts/conf.d"
 cp "$root/userland/etc/fonts/99-felix-dejavu.conf" "$stage/root/etc/fonts/conf.d/"
 # Append to Alpine's app defaults, preserving its terminal behavior.
@@ -60,6 +68,9 @@ cp "$work/alpine/work/check-theme" "$stage/root/usr/share/felix/check-theme"
 cp "$root/userland/tests/check-fonts.c" "$work/alpine/work/"
 chroot "$work/alpine" sh -c 'cc -Os /work/check-fonts.c $(pkg-config --cflags --libs xft fontconfig) -lX11 -o /work/check-fonts && strip /work/check-fonts'
 cp "$work/alpine/work/check-fonts" "$stage/root/usr/share/felix/check-fonts"
+cp "$root/userland/tests/check-motion.c" "$work/alpine/work/"
+chroot "$work/alpine" sh -c 'cc -Os /work/check-motion.c -lX11 -o /work/check-motion && strip /work/check-motion'
+cp "$work/alpine/work/check-motion" "$stage/root/usr/share/felix/check-motion"
 cp "$root/userland/wbar/COPYING" "$stage/root/usr/share/felix/licenses/wbar-COPYING"
 cp "$root/userland/share/theme/TERMINAL-LICENSE.txt" "$stage/root/usr/share/felix/licenses/rxvt-unicode-COPYING"
 cp "$root/userland/tinyx/COPYING" "$stage/root/usr/share/felix/licenses/TinyX-COPYING"
@@ -68,7 +79,7 @@ cp "$work/kernel/LICENSES/preferred/GPL-2.0" "$stage/root/usr/share/felix/licens
 cp "$work/alpine/work/fltk-1.4.5/COPYING" "$stage/root/usr/share/felix/licenses/FLTK-COPYING"
 cp "$root/userland/flwm/README" "$stage/root/usr/share/felix/licenses/flwm-README"
 cp "$release/kernel.config" "$stage/root/usr/share/felix/"
-printf 'NAME="Felix"\nID=felix\nID_LIKE=alpine\nVERSION="1.0"\nVERSION_ID="1.0"\nPRETTY_NAME="Felix 1.0"\n' > "$stage/root/etc/os-release"
+printf 'NAME="Felix"\nID=felix\nID_LIKE=alpine\nVERSION="1.1"\nVERSION_ID="1.1"\nPRETTY_NAME="Felix 1.1"\n' > "$stage/root/etc/os-release"
 chmod +x "$stage/root/init" "$stage/root/usr/bin/felix-session" "$stage/root/usr/bin/felix-dock" "$stage/root/usr/bin/felix-terminal" "$stage/root/root/.wmx/"*
 chroot "$stage/root" apk info -v > "$release/packages.txt"
 # Minimize only this newly-created staging tree, never the source or build root.
@@ -99,14 +110,14 @@ cp /usr/lib/ISOLINUX/isolinux.bin /usr/lib/syslinux/modules/bios/ldlinux.c32 "$s
 cp /usr/lib/syslinux/modules/bios/vesamenu.c32 /usr/lib/syslinux/modules/bios/libcom32.c32 /usr/lib/syslinux/modules/bios/libutil.c32 "$stage/iso/boot/isolinux/"
 cp "$root/userland/linux/isolinux.cfg" "$stage/iso/boot/isolinux/"
 cp "$stage/root/usr/share/felix/theme/boot.png" "$stage/iso/boot/isolinux/splash.png"
-xorriso -as mkisofs -o "$release/felix-1.0-x86.iso.tmp" -V FELIX -J -R \
+xorriso -as mkisofs -o "$release/felix-1.1-x86.iso.tmp" -V FELIX -J -R \
     -b boot/isolinux/isolinux.bin -c boot/isolinux/boot.cat \
     -no-emul-boot -boot-load-size 4 -boot-info-table \
     -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin "$stage/iso"
-size=$(stat -c %s "$release/felix-1.0-x86.iso.tmp")
+size=$(stat -c %s "$release/felix-1.1-x86.iso.tmp")
 [ "$size" -lt 29000000 ] || { echo "ISO exceeds the 29 MB budget: $size bytes" >&2; exit 1; }
-mv "$release/felix-1.0-x86.iso.tmp" "$release/felix-1.0-x86.iso"
-(cd "$release" && sha256sum felix-1.0-x86.iso > felix-1.0-x86.iso.sha256)
+mv "$release/felix-1.1-x86.iso.tmp" "$release/felix-1.1-x86.iso"
+(cd "$release" && sha256sum felix-1.1-x86.iso > felix-1.1-x86.iso.sha256)
 printf '%s\n' "$stage/root" > "$release/staging-root.txt"
 echo "Felix ISO: $size bytes (hard limit 29000000)"
 python3 "$root/tools/size-report.py"

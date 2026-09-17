@@ -13,7 +13,7 @@ class Guest:
     def __init__(self,live):
         self.log=open(work/('live-qemu.log' if live else 'disk-qemu.log'),'ab')
         args=['qemu-system-i386','-accel','kvm','-cpu','host','-m','768','-vga','std','-nic','user,model=e1000','-display','none','-serial','tcp:127.0.0.1:2315,server=on,wait=off','-no-reboot','-drive',f'file={disk},format=qcow2,if=ide']
-        if live:args+=['-cdrom',str(release/'felix-1.0-x86.iso'),'-boot','d']
+        if live:args+=['-cdrom',str(release/'felix-1.1-x86.iso'),'-boot','d']
         else:args+=['-boot','c']
         self.p=subprocess.Popen(args,stdout=self.log,stderr=self.log)
         for _ in range(60):

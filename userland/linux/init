@@ -10,8 +10,7 @@ mount -t tmpfs -o mode=1777 tmpfs /tmp
 hostname felix
 mdev -s
 ip link set lo up
-ip link set eth0 up
-udhcpc -i eth0 -q -n -t 3 -T 2 >/tmp/network.log 2>&1 &
+/usr/bin/felix-ethernet &
 # An optional, user-prepared ext4 disk labelled FELIXDATA preserves home.
 # Probe actual disks first: passing an absent LABEL to mount makes the kernel
 # print a warning on the framebuffer even when mount's stderr is redirected.
@@ -43,7 +42,7 @@ case " $(cat /proc/cmdline) " in
         echo 'Felix recovery shell. Run reboot to return to the boot menu.' >/dev/tty1
         while :; do /bin/sh </dev/tty1 >/dev/tty1 2>&1; done ;;
 esac
-echo 'Felix 1.0: starting desktop' >/dev/console
+echo 'Felix 1.1: starting desktop' >/dev/console
 /usr/bin/felix-session
 echo 'Desktop ended. Type startx to return to Felix.' >/dev/tty1
 while :; do /bin/sh </dev/tty1 >/dev/tty1 2>&1; done
