@@ -1,8 +1,21 @@
-# Felix 1.1 preview
+# Felix 1.1
 
-Build: 17 September 2026. ISO: **25,165,824 bytes (24 MiB)**, about 11% smaller than 1.0. SHA-256: `d9e895e965e85b92c6fac7827de5405b9e47c3f6675e0e640e6b2ceb5718613f`. Automated boot, animation, six-model Ethernet and disposable-disk installation checks passed; see `BUILD_STATUS.md` for exact coverage.
+Stable release for the supported BIOS/x86 configuration, 17 September 2026. ISO: **25,165,824 bytes (24 MiB)**, about 11% smaller than 1.0. SHA-256: `089a1b2090c6904ee0f531ce7bc89ea8975680c3f552b26ba61a859a4f3b75e7`. Final release validation is recorded in `BUILD_STATUS.md`.
 
-Felix 1.1 expands networking and improves the desktop while reducing the live image size. The 1.0 release remains available separately. This branch is a preview; physical Wi-Fi hardware has not been validated.
+Felix 1.1 expands networking and improves the desktop while reducing the live image size. The 1.0 release remains available separately.
+
+## Supported configuration
+
+The release target is BIOS/legacy 32-bit x86, standard VESA VGA, PS/2 input and 512 MB RAM for live use. Automated checks use QEMU/KVM. The installer requires Ethernet and a whole eligible 2 GiB–2 TiB disk, creates an MBR bootloader and ext4 filesystem, and boots a regular disk-backed system with a sudo user.
+
+UEFI-only boot and dual boot are not supported. Physical Ethernet, USB and Wi-Fi adapters have not been validated. Included drivers and optional firmware do not guarantee support for every chipset. Modern software requiring DRM, Wayland or a full Xorg server may not work. Manual network and date/time changes apply to the current session. Live-session changes require persistent storage to survive shutdown.
+
+## Stability fixes
+
+* Ethernet DHCP recovery checks the process command and interface before trusting a PID file. A reused PID no longer prevents DHCP from restarting. Manual IPv4 configuration checks the DHCP process identity before stopping it.
+* Firmware completion no longer probes PCI devices on the GUI thread. Reload is an explicit, separate operation for the selected card; operation-status errors restore the controls instead of leaving them disabled.
+* USB hardware detection reads bound interface drivers rather than reporting the generic USB device driver as a Wi-Fi driver.
+* Opening the Wi-Fi hardware window preserves that selection through administrator authentication.
 
 ## Desktop and apps
 

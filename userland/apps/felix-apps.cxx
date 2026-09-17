@@ -284,7 +284,17 @@ struct Settings {
         FILE *flag=fopen(marker.c_str(),"w");if(!flag){fl_alert("Cannot update network mode.");return;}fclose(flag);
         std::string pidpath=std::string("/run/felix-dhcp-")+iface->value()+".pid";
         FILE *pidfile=fopen(pidpath.c_str(),"r");long dhcp_pid=0;
-        if(pidfile){if(fscanf(pidfile,"%ld",&dhcp_pid)==1 && dhcp_pid>1)kill((pid_t)dhcp_pid,SIGTERM);fclose(pidfile);}
+        if(pidfile){
+            if(fscanf(pidfile,"%ld",&dhcp_pid)==1 && dhcp_pid>1 && dhcp_pid<=2147483647) {
+                std::ifstream command("/proc/"+std::to_string(dhcp_pid)+"/cmdline");
+                std::vector<std::string> args;std::string arg;
+                while(std::getline(command,arg,'\0'))args.push_back(arg);
+                if(!args.empty() && (args[0]=="udhcpc" || args[0]=="/sbin/udhcpc"))
+                    for(size_t i=1;i+1<args.size();++i)
+                        if(args[i]=="-i" && args[i+1]==iface->value()){kill((pid_t)dhcp_pid,SIGTERM);break;}
+            }
+            fclose(pidfile);
+        }
         int code=execute({"/sbin/ifconfig",iface->value(),address->value(),"netmask",mask->value(),"up"});
         if(code){fl_alert("ifconfig failed (%d). Check the interface name.",code);return;}
         code=execute({"/sbin/ip","route","replace","default","via",gateway->value(),"dev",iface->value()});
@@ -467,6 +477,7 @@ int main(int argc,char **argv) {
     if(geteuid()!=0 && (!strcmp(app,"packages")||!strcmp(app,"settings")||!strcmp(app,"wifi"))) {
         setenv("SUDO_ASKPASS","/usr/bin/felix-askpass",1);
         std::vector<std::string> args={"sudo","-A","/usr/bin/env",std::string("HOME=")+(getenv("HOME")?getenv("HOME"):"/root"),std::string("DISPLAY=")+(getenv("DISPLAY")?getenv("DISPLAY"):":0"),std::string("XAUTHORITY=")+(getenv("XAUTHORITY")?getenv("XAUTHORITY"):""),"/usr/bin/felix-apps",app};
+        if(!strcmp(app,"wifi") && argc==3 && !strcmp(argv[2],"--hardware"))args.push_back("--hardware");
         std::vector<char*> av;for(auto&a:args)av.push_back(const_cast<char*>(a.c_str()));av.push_back(nullptr);execvp(av[0],av.data());fl_alert("Cannot start sudo.");return 1;
     }
     if(!strcmp(app,"installer")){if(geteuid()!=0||access("/etc/felix-live",F_OK)){fl_alert("Boot the live Felix ISO to install.");return 1;}Installer ui;return Fl::run();}

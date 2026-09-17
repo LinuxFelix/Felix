@@ -45,7 +45,20 @@ struct WifiHardware {
                 char link[512];ssize_t n=readlink((path+"/driver").c_str(),link,sizeof(link)-1);
                 std::string driver;
                 if(n>0){link[n]=0;driver=link;driver=driver.substr(driver.rfind('/')+1);}
-                // USB drivers bind interfaces, not necessarily the device node.
+                // The generic USB device driver is not a wireless driver.
+                if(!strcmp(bus,"usb")) {
+                    driver.clear();
+                    DIR *interfaces=opendir(path.c_str());
+                    if(interfaces) {
+                        while(auto *part=readdir(interfaces)) {
+                            if(!strchr(part->d_name,':'))continue;
+                            std::string interface=path+"/"+part->d_name;
+                            n=readlink((interface+"/driver").c_str(),link,sizeof(link)-1);
+                            if(n>0){link[n]=0;std::string bound=link;bound=bound.substr(bound.rfind('/')+1);if(!driver.empty())driver+=", ";driver+=bound;}
+                        }
+                        closedir(interfaces);
+                    }
+                }
                 std::string status=driver.empty()?"driver/firmware not confirmed":"driver: "+driver;
                 int index=family(id);
                 cards.push_back({std::string(brand(index))+"  "+id+":"+device+"  "+description+"  ["+status+"]",index,!strcmp(bus,"pci")?entry->d_name:""});
@@ -58,20 +71,20 @@ struct WifiHardware {
     }
     static void tick(void *p) {
         auto *s=(WifiHardware*)p;int status=0;
-        if(waitpid(s->child,&status,WNOHANG)==s->child) {
+        pid_t result=waitpid(s->child,&status,WNOHANG);
+        if(result<0 && errno!=EINTR) {
+            s->child=-1;s->reloading=false;s->install.activate();s->vendor.activate();
+            s->state.copy_label("Could not read the operation result. Check /tmp/felix-firmware.log before retrying.");return;
+        }
+        if(result==s->child) {
             s->child=-1;s->install.activate();s->vendor.activate();
             if(s->reloading) {
                 s->reloading=false;
                 s->state.copy_label(WIFEXITED(status)&&WEXITSTATUS(status)==0?"Driver reload requested. Refresh Wi-Fi to check for an interface.":"Driver reload failed. See /tmp/felix-firmware.log; the chipset may need another driver or firmware.");
                 return;
             }
-            if(WIFEXITED(status)&&WEXITSTATUS(status)==0) {
-                for(const auto& card:s->cards)if(!card.pci.empty()) {
-                    std::ofstream probe("/sys/bus/pci/drivers_probe");probe<<card.pci;
-                }
-            }
             s->state.copy_label(WIFEXITED(status)&&WEXITSTATUS(status)==0
-                ? "Firmware installed; detected PCI cards were reprobed. Refresh Wi-Fi, or reconnect a USB adapter.\nInstalled systems keep firmware. Live-session firmware downloads are lost at shutdown."
+                ? "Firmware installed. Reload the selected PCI driver, or reconnect a USB adapter, then refresh Wi-Fi.\nInstalled systems keep firmware. Live-session downloads are lost at shutdown."
                 : "Firmware installation failed. Check Ethernet connectivity and /tmp/felix-firmware.log.");
         } else Fl::repeat_timeout(.25,tick,s);
     }

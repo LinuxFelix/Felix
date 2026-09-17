@@ -5,8 +5,8 @@ Measured from the current Linux x86 release. MB means 1,000,000 bytes. The hard 
 | ISO component | Bytes | MB |
 |---|---:|---:|
 | Linux 6.18.50 tinyconfig-based kernel | 3,625,472 | 3.625 |
-| XZ-compressed RAM root | 20,126,888 | 20.127 |
-| BIOS loader, ISO filesystem and hybrid alignment | 1,413,464 | 1.413 |
+| XZ-compressed RAM root | 20,119,604 | 20.120 |
+| BIOS loader, ISO filesystem and hybrid alignment | 1,420,748 | 1.421 |
 | Complete ISO | 25,165,824 | 25.166 |
 | Headroom below 29,000,000 bytes | 3,834,176 | 3.834 |
 
@@ -15,7 +15,7 @@ The following are uncompressed regular-file bytes inside the RAM root; they expl
 | Userland group | Bytes | MB |
 |---|---:|---:|
 | BusyBox utilities and shell | 820,500 | 0.821 |
-| Felix applications, session and menus | 674,422 | 0.674 |
+| Felix applications, session and menus | 674,780 | 0.675 |
 | Remaining base files, licenses and configuration | 22,939,326 | 22.939 |
 | Terminal background extension and Perl runtime | 34,651,162 | 34.651 |
 | Terminals, wbar and theme assets | 3,903,636 | 3.904 |
@@ -25,7 +25,7 @@ The following are uncompressed regular-file bytes inside the RAM root; they expl
 | apk, HTTPS libraries and certificates | 5,255,107 | 5.255 |
 | flwm with static FLTK core | 427,936 | 0.428 |
 | musl and C/C++ runtime libraries | 3,732,308 | 3.732 |
-| Total regular-file content | 84,004,905 | 84.005 |
+| Total regular-file content | 84,005,263 | 84.005 |
 
 The kernel uses VESA fbdev and has no DRM. Wireless, cfg80211/mac80211, USB host controllers and selected Intel, Broadcom, Atheros, Ralink, Realtek and MediaTek drivers are enabled. The initial image omits a compositor, development tools, documentation packages and kernel modules. TinyX embeds fixed and cursor fonts. FLTK uses Xft with DejaVu Sans and Sans Mono, and excludes OpenGL, Wayland, printing and image-codec libraries; PNG wallpapers use the small Felix root utility and libpng. Only the required core FLTK archive is built.
 

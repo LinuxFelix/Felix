@@ -14,7 +14,23 @@ while :; do
         ip link set "$name" up 2>/dev/null || continue
         [ "$(cat "$device/carrier" 2>/dev/null)" = 1 ] || continue
         pidfile=/run/felix-dhcp-$name.pid
-        if [ -s "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then continue; fi
+        pid=$(cat "$pidfile" 2>/dev/null)
+        case "$pid" in ''|*[!0-9]*) pid=0 ;; esac
+        # A stale pidfile must not suppress DHCP when the PID has been reused.
+        if [ "$pid" -gt 1 ] 2>/dev/null && [ -r "/proc/$pid/cmdline" ]; then
+            command=$(tr '\000' '\n' < "/proc/$pid/cmdline")
+            case "$command" in
+                "udhcpc
+-f
+-i
+$name
+"*|"/sbin/udhcpc
+-f
+-i
+$name
+"*) continue ;;
+            esac
+        fi
         udhcpc -f -i "$name" -p "$pidfile" -t 3 -T 2 >>/tmp/network.log 2>&1 &
         echo $! > "$pidfile"
     done

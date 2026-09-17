@@ -26,6 +26,7 @@ iso = release / 'felix-1.1-x86.iso'
 digest = hashlib.sha256(iso.read_bytes()).hexdigest()
 size = iso.stat().st_size
 shutil.copy2(iso, web / 'downloads' / iso.name)
+shutil.copy2(root / 'RELEASE-1.1.md', web / 'downloads' / 'RELEASE-1.1.md')
 (web / 'downloads' / (iso.name + '.sha256')).write_text(f'{digest}  {iso.name}\n')
 pages = [('index.html', 'Home', 'terminal.png'), ('downloads.html', 'Downloads', 'applications.png'),
          ('about.html', 'About', 'settings.png'), ('screenshots.html', 'Screenshots', 'notepad.png')]
@@ -48,7 +49,7 @@ def write_page(filename, title, content):
 <div class="site">
   <header>
     <div class="titlebar"><span>felix / {title.lower()}</span><span class="window-marks" aria-hidden="true">&#8722; &#9633; &#215;</span></div>
-    <div class="masthead"><a class="wordmark" href="index.html">felix<span>small system. your space.</span></a><p>Felix 1.1 preview / x86<br><span class="muted">A little desktop of your own.</span></p></div>
+    <div class="masthead"><a class="wordmark" href="index.html">felix<span>small system. your space.</span></a><p>Felix 1.1 / x86<br><span class="muted">A little desktop of your own.</span></p></div>
   </header>
   <div class="layout">
     <aside>
@@ -77,14 +78,14 @@ write_page('index.html', 'Home', f'''
 <dt>Apps for the everyday</dt><dd>Notepad, Settings, WiFConfig, an Applications installer and a terminal.</dd>
 <dt>A home on your disk</dt><dd>The installer creates an ext4 system with a user account and password-protected sudo access.</dd>
 </dl>
-<section class="news"><h2>From the workbench</h2><p class="date">14 September 2026</p><p>Clean Aqua-inspired controls, a digital desktop clock, and a text-mode boot option. Type startx when you want the desktop, and exit back to the console when you're done.</p><p><a href="downloads.html#release-notes">Read the release notes &raquo;</a></p></section>
+<section class="news"><h2>Felix 1.1 is here</h2><p class="date">17 September 2026</p><p>Broader Ethernet support, Wi-Fi hardware assistance, smaller PNG artwork and gentle window animations with a reduced-motion option. A smaller image with the familiar Aqua-inspired desktop.</p><p><a href="downloads.html#release-notes">Read the release notes &raquo;</a></p></section>
 <p class="small">Curious first? Visit <a href="about.html">About Felix</a> or browse the <a href="screenshots.html">screenshots</a>.</p>
 ''')
 
 write_page('downloads.html', 'Downloads', f'''
 <p class="eyebrow">TAKE A COPY</p><h1>Downloads</h1>
 <p class="intro">One small ISO. A complete Felix desktop.</p>
-<section class="download-box"><h2>Felix 1.1 preview / x86</h2>
+<section class="download-box"><h2>Felix 1.1 / x86</h2>
 <p><a class="button" href="downloads/{iso.name}" download>Download ISO &raquo;</a></p>
 <p>{size/1e6:.2f} MB &middot; {size:,} bytes &middot; 32-bit x86</p>
 <p><a href="downloads/{iso.name}.sha256" download>SHA-256 checksum file</a></p></section>
@@ -101,10 +102,10 @@ write_page('downloads.html', 'Downloads', f'''
 <h2>Verify your download</h2><p>Save the ISO and checksum file in the same directory, then run:</p>
 <pre><code>sha256sum -c {iso.name}.sha256</code></pre>
 <p class="small">SHA-256:</p><p class="checksum"><code>{digest}</code></p>
-<section id="release-notes"><h2>Release notes / 14 September 2026</h2>
-<ul><li>Pale Aqua-inspired titlebars, clean app controls and a redesigned Applications layout.</li><li>A digital clock with seconds and date at the top right of the desktop.</li><li>Text boot with startx, and an Exit to console menu action.</li></ul>
-<ul><li>Fixed a heap overflow when opening the flwm menu.</li><li>Fixed access to a closed window while its menu entry was still visible.</li><li>Includes DejaVu Sans and DejaVu Sans Mono, the charcoal desktop and left-side wbar.</li></ul>
-<p class="small">Checks passed: 81 menu openings under AddressSanitizer and 60 automated right-clicks on the ISO. Physical hardware compatibility varies.</p></section>
+<section id="release-notes"><h2>Release notes / 17 September 2026</h2>
+<ul><li>More Ethernet drivers, automatic DHCP recovery and adapter status in Settings.</li><li>Wi-Fi hardware identification and optional firmware downloads, with explicit driver reload.</li><li>Lightweight opening and closing animations, plus a Reduce motion setting.</li><li>Smaller PNG wallpapers and icons, Notepad Find next and Save As shortcuts.</li><li>Fixes for stale DHCP process IDs and Wi-Fi hardware-window administrator launch.</li></ul>
+<p><a href="downloads/RELEASE-1.1.md">Full release notes and supported configuration</a></p>
+<p class="small">Release checks cover desktop and console boot, popup memory safety, six virtual Ethernet models, and disk installation. Physical Ethernet and Wi-Fi hardware remain unverified. Screenshots show the labeled 1.0 build.</p></section>
 ''')
 
 write_page('about.html', 'About', '''

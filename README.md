@@ -1,6 +1,6 @@
-# Felix 1.1 preview
+# Felix 1.1
 
-This branch develops Felix 1.1: broader networking, Wi-Fi hardware assistance,
+Felix 1.1 brings broader networking, Wi-Fi hardware assistance,
 PNG wallpapers, reduced image size and lightweight window animations. See
 `RELEASE-1.1.md` and `BUILD_STATUS.md` for changes, measured size and validation.
 The tested Felix 1.0 release remains separate.

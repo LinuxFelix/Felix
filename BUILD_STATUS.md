@@ -1,6 +1,18 @@
 # Build status
 
-## Felix 1.1 preview — 2026-09-17
+## Felix 1.1 — release ready, 2026-09-17
+
+The stable release targets the BIOS/x86 configuration described in `RELEASE-1.1.md`. ISO: `build/release/felix-1.1-x86.iso`, **25,165,824 bytes (24 MiB)**. SHA-256: `089a1b2090c6904ee0f531ce7bc89ea8975680c3f552b26ba61a859a4f3b75e7`. The newc cpio/XZ rootfs is **20,119,604 bytes**. Website and release ISOs are byte-identical.
+
+Release hardening fixes stale DHCP PID handling, validates the DHCP process before manual-network shutdown, removes synchronous PCI reprobes from firmware completion, recovers Wi-Fi operation controls on wait errors, reports USB interface drivers, and preserves the hardware-window choice through sudo. The website now describes 1.1 rather than retaining 1.0 release notes.
+
+Passed on this final ISO: desktop/fonts/terminal/clock/hardware-window startup; opening animations, reduced motion and rapid client destruction; console boot and two startx cycles; 60 verified popup openings, closing a client during a popup and menu logout; all six virtual Ethernet models (e1000, e1000e, RTL8139, PCnet, virtio-net-pci, VMXNET3), including DHCP recovery from a PID file pointing to an unrelated live process. Installation used a new disposable virtual disk, refused a mounted target and passed two disk-only boots, non-root desktop, sudo and persistent documents. Archive checks passed for cpio integrity, embedded version, kernel/rootfs/ISO hashes and the website copy.
+
+Source/backend checks also passed: 81 popup cycles under AddressSanitizer; 1,080 overlapping framebuffer-copy cases; 1,848 shadow-copy cases plus empty-bank/damage handling; real wpa_supplicant control tests for open/WPA2/WPA3 profiles, quoted credentials, save/reload, private permissions and forgetting. These Wi-Fi backend checks do not test radio authentication.
+
+Logs: `build/1.1-release-{build,serial,text,menu,memory,ethernet,installer,blit,shadow,wifi,web,archive}.log`. Physical adapters, firmware downloads/reloads on real hardware and visual appearance remain unverified. No 1.1 screenshots were captured; the gallery is explicitly labeled 1.0. Release status is limited to the documented configuration, not universal hardware compatibility.
+
+## Felix 1.1 preview — historical, 2026-09-17
 
 The preview ISO is built at `build/release/felix-1.1-x86.iso`: **25,165,824 bytes (24 MiB)**, down from 1.0's 28,311,552 bytes. SHA-256: `d9e895e965e85b92c6fac7827de5405b9e47c3f6675e0e640e6b2ceb5718613f`. The final cpio archive is **20,126,888 bytes**. The website download matches the ISO. The 1.0 ISO remains separate, and its kernel/rootfs metadata is preserved in `build/releases/1.0/`.
 

@@ -19,6 +19,9 @@ for model in ('e1000','e1000e','rtl8139','pcnet','virtio-net-pci','vmxnet3'):
             connection.settimeout(.3);time.sleep(25)
             marker='ETH_'+secrets.token_hex(5)
             command='stty -echo; ip -4 address; ip route; cat /tmp/network.log; test -n "$(pidof felix-ethernet)"; ip -4 addr show eth0 | grep -q "inet 10.0.2." && ip route | grep -q "default via 10.0.2.2"'
+            if model=='e1000':
+                # Reused PIDs must neither suppress DHCP nor kill another process.
+                command += '; old=$(cat /run/felix-dhcp-eth0.pid); kill "$old"; sleep 1; sleep 60 & unrelated=$!; echo "$unrelated" > /run/felix-dhcp-eth0.pid; sleep 8; current=$(cat /run/felix-dhcp-eth0.pid); test "$current" != "$unrelated" && kill -0 "$unrelated" && tr "\\000" " " < /proc/$current/cmdline | grep -q "udhcpc -f -i eth0" && ip -4 addr show eth0 | grep -q "inet 10.0.2."'
             connection.sendall((command+f'; printf "\\n{marker}:%s\\n" "$?"\n').encode())
             deadline=time.monotonic()+15
             while time.monotonic()<deadline:
