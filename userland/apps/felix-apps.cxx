@@ -17,6 +17,7 @@
 #include <FL/fl_ask.H>
 #include <FL/Fl_File_Chooser.H>
 #include <X11/Xlib.h>
+#include <X11/Xatom.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
@@ -35,6 +36,8 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <fstream>
+#include <dirent.h>
 #include "aqua.h"
 
 static int execute(const std::vector<std::string>& args) {
@@ -55,16 +58,19 @@ struct Notepad {
     Fl_Text_Buffer text;
     Fl_Text_Editor editor{10,50,740,450};
     Fl_Box status{10,505,740,25};
-    std::string path;
+    std::string path,search_term;
     bool dirty=false, loading=false;
     std::string documents() const {
         const char *home=getenv("HOME");
         return std::string(home?home:"/root")+"/Documents/";
     }
-    void find() {
-        const char *answer=fl_input("Find text (search wraps to the beginning):","");
-        if(!answer || !*answer)return;
-        std::string needle=answer;int position=0;
+    void find(bool again=false) {
+        if(!again || search_term.empty()) {
+            const char *answer=fl_input("Find text (search wraps to the beginning):",search_term.c_str());
+            if(!answer || !*answer)return;
+            search_term=answer;
+        }
+        const std::string& needle=search_term;int position=0;
         if(text.search_forward(editor.insert_position(),needle.c_str(),&position)
            || text.search_forward(0,needle.c_str(),&position)) {
             text.select(position,position+(int)needle.size());
@@ -79,7 +85,8 @@ struct Notepad {
     void update() {
         std::string label=(dirty ? "* " : "")+(path.empty() ? std::string("Untitled") : path)+" - Felix Notepad";
         win.copy_label(label.c_str());
-        status.copy_label(path.empty() ? "Choose Save As to save a UTF-8 text document." : path.c_str());
+        std::string info=(dirty?"Unsaved changes":path.empty()?"New document":"Saved")+std::string("  |  ")+std::to_string(text.length())+" bytes  |  "+(path.empty()?"Untitled":path);
+        status.copy_label(info.c_str());
     }
     bool save(bool choose=false) {
         std::string target=path;
@@ -140,16 +147,20 @@ struct Notepad {
         findbutton->shortcut(FL_CTRL+'f');
         findbutton->callback([](Fl_Widget*,void*p){((Notepad*)p)->find();},this);
         auto *wrap=new Fl_Check_Button(480,10,150,30,"Word wrap");
+        auto *next=new Fl_Button(640,10,100,30,"Find next");next->shortcut(FL_F+3);next->tooltip("Find the next match (F3)");
+        next->callback([](Fl_Widget*,void*p){((Notepad*)p)->find(true);},this);
         wrap->value(1);
         wrap->callback([](Fl_Widget*w,void*p){((Notepad*)p)->editor.wrap_mode(((Fl_Check_Button*)w)->value()?Fl_Text_Display::WRAP_AT_BOUNDS:Fl_Text_Display::WRAP_NONE,0);},this);
         fresh->callback([](Fl_Widget*,void *p){auto*s=(Notepad*)p;if(s->discard()){s->loading=true;s->text.text("");s->loading=false;s->path.clear();s->dirty=false;s->update();}},this);
         load->callback([](Fl_Widget*,void*p){((Notepad*)p)->open();},this);
         savebutton->callback([](Fl_Widget*,void*p){((Notepad*)p)->save();},this);
         saveas->callback([](Fl_Widget*,void*p){((Notepad*)p)->save(true);},this);
+        saveas->shortcut(FL_CTRL|FL_SHIFT|'s');
+        savebutton->tooltip("Save document (Ctrl+S)");load->tooltip("Open document (Ctrl+O)");
         savebutton->shortcut(FL_CTRL+'s');load->shortcut(FL_CTRL+'o');fresh->shortcut(FL_CTRL+'n');
         editor.buffer(&text);editor.textfont(FL_COURIER);editor.textsize(14);
         editor.wrap_mode(Fl_Text_Display::WRAP_AT_BOUNDS,0);
-        win.size_range(640,360);
+        win.size_range(760,360);
         text.add_modify_callback(modified,this);status.align(FL_ALIGN_LEFT|FL_ALIGN_INSIDE);
         win.resizable(editor);win.end();
         win.callback([](Fl_Widget*,void*p){auto*s=(Notepad*)p;if(s->discard())s->win.hide();},this);
@@ -169,7 +180,13 @@ static std::map<std::string,std::string> read_settings() {
         char *eq=strchr(line,'=');if(!eq)continue;*eq++=0;
         eq[strcspn(eq,"\r\n")]=0;result[line]=eq;
     }
-    fclose(file);return result;
+    fclose(file);
+    for(const char *name:{"wallpaper","midnight","silver"}) {
+        std::string old=std::string("/usr/share/felix/theme/")+name+".ppm";
+        auto selected=result.find("wallpaper");
+        if(selected!=result.end() && selected->second==old)selected->second=std::string("/usr/share/felix/theme/")+name+".png";
+    }
+    return result;
 }
 static bool valid_ipv4(const char *value) {struct in_addr addr;return inet_pton(AF_INET,value,&addr)==1;}
 static bool valid_interface(const char *value) {
@@ -186,6 +203,8 @@ static bool apply_x(const std::map<std::string,std::string>& values) {
         return n<min?min:n>max?max:n;
     };
     XChangePointerControl(d,True,True,get("mouse",10,2,30),10,0);
+    unsigned long reduced=get("reduced_motion",0,0,1);
+    XChangeProperty(d,DefaultRootWindow(d),XInternAtom(d,"_FELIX_REDUCED_MOTION",False),XA_CARDINAL,32,PropModeReplace,(unsigned char*)&reduced,1);
     XSetScreenSaver(d,get("saver",0,0,120)*60,60,PreferBlanking,AllowExposures);
     XKeyboardControl k{};k.auto_repeat_mode=get("repeat",1,0,1)?AutoRepeatModeOn:AutoRepeatModeOff;
     k.bell_percent=get("bell",0,0,100);
@@ -194,9 +213,9 @@ static bool apply_x(const std::map<std::string,std::string>& values) {
     std::string bg=color==values.end()?"#66A9CE":color->second;
     if(!valid_color(bg))bg="#66A9CE";
     auto wallpaper=values.find("wallpaper");
-    if(wallpaper==values.end())return execute({"/usr/bin/felix-root","--ppm","/usr/share/felix/theme/wallpaper.ppm"})==0;
+    if(wallpaper==values.end())return execute({"/usr/bin/felix-root","--image","/usr/share/felix/theme/wallpaper.png"})==0;
     if(wallpaper!=values.end() && !wallpaper->second.empty())
-        return execute({"/usr/bin/felix-root","--ppm",wallpaper->second})==0;
+        return execute({"/usr/bin/felix-root","--image",wallpaper->second})==0;
     return execute({"/usr/bin/felix-root",bg})==0;
 }
 struct Settings {
@@ -204,7 +223,26 @@ struct Settings {
     Fl_Value_Slider *mouse;
     Fl_Input *color,*wallpaper,*iface,*address,*mask,*gateway,*dns,*datetime;
     Fl_Input *saver,*bell;
-    Fl_Check_Button *repeat;
+    Fl_Check_Button *repeat,*reduced_motion;
+    Fl_Choice *wired;
+    Fl_Box *network_state;
+    void refresh_network() {
+        wired->clear();DIR *dir=opendir("/sys/class/net");int selected=-1,count=0;
+        if(dir){while(auto *entry=readdir(dir)) {
+            std::string name=entry->d_name,base="/sys/class/net/"+name;
+            if(!valid_interface(name.c_str())||name=="lo"||!access((base+"/wireless").c_str(),F_OK)||!access((base+"/phy80211").c_str(),F_OK))continue;
+            wired->add(name.c_str());if(name==iface->value())selected=count;count++;
+        }closedir(dir);}
+        if(selected<0 && count){selected=0;iface->value(wired->text(0));}
+        wired->value(selected);
+        std::string name=iface->value(),base="/sys/class/net/"+name;
+        if(!valid_interface(name.c_str())||access(base.c_str(),F_OK)){network_state->copy_label("No wired adapter found. Connect an Ethernet adapter and refresh.");return;}
+        std::ifstream carrier(base+"/carrier");int link=0;carrier>>link;
+        std::string ip;struct ifaddrs *all=nullptr;
+        if(!getifaddrs(&all)){for(auto*p=all;p;p=p->ifa_next)if(p->ifa_addr && name==p->ifa_name && p->ifa_addr->sa_family==AF_INET){char text[INET_ADDRSTRLEN];if(inet_ntop(AF_INET,&((sockaddr_in*)p->ifa_addr)->sin_addr,text,sizeof(text)))ip=text;}freeifaddrs(all);}
+        std::string info=name+"  |  "+(link?"Cable connected":"Cable unplugged")+"  |  "+(ip.empty()?"No IP address yet":ip);
+        network_state->copy_label(info.c_str());
+    }
     std::map<std::string,std::string> values=read_settings();
     static Fl_Input *input(int y,const char *label,const char *value) {
         auto *i=new Fl_Input(170,y,470,30,label);i->value(value);return i;
@@ -224,6 +262,7 @@ struct Settings {
         values["mouse"]=std::to_string((int)(mouse->value()*10));
         values["color"]=color->value();values["wallpaper"]=wallpaper->value();
         values["saver"]=saver->value();values["bell"]=bell->value();values["repeat"]=repeat->value()?"1":"0";
+        values["reduced_motion"]=reduced_motion->value()?"1":"0";
         std::string path=settings_path(),dir=path.substr(0,path.rfind('/'));
         mkdir(dir.c_str(),0700);
         FILE *f=fopen((path+".tmp").c_str(),"w");if(!f){fl_alert("Cannot save settings: %s",strerror(errno));return false;}
@@ -241,6 +280,11 @@ struct Settings {
         if(!valid_interface(iface->value()) || !valid_ipv4(address->value()) || !valid_ipv4(mask->value())
            || !valid_ipv4(gateway->value()) || !valid_ipv4(dns->value())) {fl_alert("Enter an interface name and valid IPv4 addresses.");return;}
         if(fl_choice("Apply this network configuration to the running session?","Cancel","Apply",nullptr)!=1)return;
+        std::string marker=std::string("/run/felix-static-")+iface->value();
+        FILE *flag=fopen(marker.c_str(),"w");if(!flag){fl_alert("Cannot update network mode.");return;}fclose(flag);
+        std::string pidpath=std::string("/run/felix-dhcp-")+iface->value()+".pid";
+        FILE *pidfile=fopen(pidpath.c_str(),"r");long dhcp_pid=0;
+        if(pidfile){if(fscanf(pidfile,"%ld",&dhcp_pid)==1 && dhcp_pid>1)kill((pid_t)dhcp_pid,SIGTERM);fclose(pidfile);}
         int code=execute({"/sbin/ifconfig",iface->value(),address->value(),"netmask",mask->value(),"up"});
         if(code){fl_alert("ifconfig failed (%d). Check the interface name.",code);return;}
         code=execute({"/sbin/ip","route","replace","default","via",gateway->value(),"dev",iface->value()});
@@ -263,24 +307,31 @@ struct Settings {
         auto *desktop=new Fl_Group(10,40,680,395,"Desktop");
         mouse=new Fl_Value_Slider(170,70,470,30,"Mouse speed");mouse->type(FL_HOR_NICE_SLIDER);mouse->bounds(.2,3);mouse->step(.1);mouse->value(atoi(get("mouse","10").c_str())/10.0);
         color=input(120,"Background",get("color","#66A9CE").c_str());
-        wallpaper=input(170,"PPM wallpaper",get("wallpaper","/usr/share/felix/theme/wallpaper.ppm").c_str());
-        auto *browse=new Fl_Button(170,210,180,30,"Choose PPM image");
-        browse->callback([](Fl_Widget*,void*p){auto*s=(Settings*)p;const char*f=fl_file_chooser("Wallpaper (P6 PPM)","*.ppm",nullptr);if(f)s->wallpaper->value(f);},this);
+        wallpaper=input(170,"Wallpaper",get("wallpaper","/usr/share/felix/theme/wallpaper.png").c_str());
+        auto *browse=new Fl_Button(170,210,180,30,"Choose image");
+        browse->callback([](Fl_Widget*,void*p){auto*s=(Settings*)p;const char*f=fl_file_chooser("Wallpaper (PNG or PPM)","*.{png,ppm}",nullptr);if(f)s->wallpaper->value(f);},this);
         auto *design=new Fl_Choice(460,210,180,30,"Design");
         design->add("Ocean glass|Midnight glass|Silver mist");
         std::string current=wallpaper->value();
-        design->value(current.find("midnight.ppm")!=std::string::npos?1:current.find("silver.ppm")!=std::string::npos?2:0);
+        design->value(current.find("midnight.png")!=std::string::npos?1:current.find("silver.png")!=std::string::npos?2:0);
         design->callback([](Fl_Widget*w,void*p){
-            static const char *files[]={"wallpaper.ppm","midnight.ppm","silver.ppm"};
+            static const char *files[]={"wallpaper.png","midnight.png","silver.png"};
             int index=((Fl_Choice*)w)->value();if(index<0||index>2)return;
             std::string file=std::string("/usr/share/felix/theme/")+files[index];
             ((Settings*)p)->wallpaper->value(file.c_str());
         },this);
         auto *note=new Fl_Box(40,270,610,90,"Leave wallpaper empty to use the solid color.\nMouse speed changes guest pointer acceleration.\nDesktop settings are saved in ~/.felix/settings.");note->align(FL_ALIGN_LEFT|FL_ALIGN_INSIDE);desktop->end();
+        desktop->begin();reduced_motion=new Fl_Check_Button(170,370,420,28,"Reduce motion (disable window animations)");reduced_motion->value(get("reduced_motion","0")=="1");desktop->end();
         auto *networktab=new Fl_Group(10,40,680,395,"Network");
-        iface=input(65,"Interface","eth0");address=input(110,"IPv4 address","10.0.2.15");mask=input(155,"Netmask","255.255.255.0");gateway=input(200,"Gateway","10.0.2.2");dns=input(245,"DNS server","10.0.2.3");
+        iface=input(65,"Interface","eth0");iface->resize(170,65,230,30);
+        wired=new Fl_Choice(420,65,220,30);wired->tooltip("Detected wired adapters");
+        wired->callback([](Fl_Widget*,void*p){auto*s=(Settings*)p;if(s->wired->text()){s->iface->value(s->wired->text());s->refresh_network();}},this);
+        address=input(110,"IPv4 address","");mask=input(155,"Netmask","255.255.255.0");gateway=input(200,"Gateway","");dns=input(245,"DNS server","");
         auto *net=new Fl_Button(170,300,200,32,"Apply network");net->callback([](Fl_Widget*,void*p){((Settings*)p)->network();},this);
         auto *wifi_button=new Fl_Button(390,300,200,32,"WiFi Configuration");wifi_button->callback([](Fl_Widget*,void*){if(fork()==0){execlp("wificonfig","wificonfig",(char*)nullptr);_exit(127);}});
+        auto *dhcp=new Fl_Button(170,350,240,32,"Use automatic Ethernet (DHCP)");dhcp->callback([](Fl_Widget*,void*p){auto*s=(Settings*)p;if(!valid_interface(s->iface->value())){fl_alert("Enter a valid interface name.");return;}std::string marker=std::string("/run/felix-static-")+s->iface->value();unlink(marker.c_str());fl_message("Automatic addressing enabled. Connect the Ethernet cable; allow a few seconds.");},this);
+        auto *refresh_link=new Fl_Button(430,350,210,32,"Refresh link status");refresh_link->callback([](Fl_Widget*,void*p){((Settings*)p)->refresh_network();},this);
+        network_state=new Fl_Box(40,390,610,35);network_state->align(FL_ALIGN_LEFT|FL_ALIGN_INSIDE|FL_ALIGN_WRAP);network_state->labelsize(12);refresh_network();
         networktab->end();
         auto *xtab=new Fl_Group(10,40,680,395,"X settings");
         saver=input(80,"Screen saver (min)",get("saver","0").c_str());bell=input(130,"Bell volume (0-100)",get("bell","0").c_str());
@@ -296,7 +347,7 @@ struct Settings {
         const char *storage=access("/etc/felix-live",F_OK)==0
             ? "Live session: save important files to a persistent drive."
             : "Installed system: files and applications are saved on your drive.";
-        if(!statvfs("/",&fs))snprintf(info,sizeof(info),"Felix 1.0\nAvailable space: %.1f MB\n%s",fs.f_bavail*(double)fs.f_frsize/1000000,storage);
+        if(!statvfs("/",&fs))snprintf(info,sizeof(info),"Felix 1.1\nAvailable space: %.1f MB\n%s",fs.f_bavail*(double)fs.f_frsize/1000000,storage);
         else strcpy(info,"Unable to read filesystem capacity.");
         auto *disk=new Fl_Box(30,80,630,130,info);disk->align(FL_ALIGN_LEFT|FL_ALIGN_INSIDE|FL_ALIGN_WRAP);
         auto *shutdown=new Fl_Button(170,250,200,32,"Shut down Felix");shutdown->callback([](Fl_Widget*,void*){if(fl_choice("Shut down Felix? Save your work before continuing.","Cancel","Shut down",nullptr)==1){sync();execute({"/sbin/poweroff","-f"});}});
@@ -434,6 +485,9 @@ int main(int argc,char **argv) {
     if(!strcmp(app,"notepad")){Notepad ui;return Fl::run();}
     if(!strcmp(app,"settings")){Settings ui;return Fl::run();}
     if(!strcmp(app,"packages")){Packages ui;return Fl::run();}
-    if(!strcmp(app,"wifi")){WifiConfig ui;return Fl::run();}
+    if(!strcmp(app,"wifi")){
+        if(argc==3 && !strcmp(argv[2],"--hardware")){WifiHardware ui;return Fl::run();}
+        WifiConfig ui;return Fl::run();
+    }
     fprintf(stderr,"usage: felix-apps notepad|settings|packages|wifi|run\n");return 1;
 }

@@ -162,7 +162,9 @@ static int self_test() {
 }
 }
 
+#include "wifi-hardware.h"
 struct WifiConfig {
+    WifiHardware *hardware=nullptr;
     Fl_Window win{800,610,"Felix WiFConfig"};
     Fl_Choice *adapter,*security;
     Fl_Hold_Browser *networks;
@@ -192,7 +194,7 @@ struct WifiConfig {
         adapters=wifi::interfaces();adapter->clear();rows.clear();networks->clear();iface.clear();
         for(const auto& name:adapters)adapter->add(name.c_str());
         if(!adapters.empty()){adapter->value(0);iface=adapters[0];message("Select Enable adapter, then Scan. Saved networks are available under Saved.");}
-        else message("No Wi-Fi adapter found. Connect a supported adapter, then refresh.");
+        else message("No usable Wi-Fi interface found. Open Hardware to identify your card and check firmware.");
     }
     void enable() {
         if(iface.empty() || child>0){ready();return;}
@@ -308,9 +310,10 @@ struct WifiConfig {
         auto *forget_btn=new Fl_Button(420,445,140,32,"Forget saved");forget_btn->callback([](Fl_Widget*,void*p){((WifiConfig*)p)->forget();},this);
         auto *status=new Fl_Button(575,445,100,32,"Status");status->callback([](Fl_Widget*,void*p){auto*s=(WifiConfig*)p;if(!s->ready())return;auto v=wifi::status_values(wifi::request(s->iface,"STATUS"));s->message(v["wpa_state"]+"  "+wifi::display_text(v["ssid"])+"  IP: "+v["ip_address"]);},this);
         state=new Fl_Box(20,490,760,65);state->align(FL_ALIGN_LEFT|FL_ALIGN_INSIDE|FL_ALIGN_WRAP);
-        auto *note=new Fl_Box(20,560,760,35,"Personal and open Wi-Fi networks. Enterprise / 802.1X is not configured here.\nSaved profiles persist only when /root is on the optional data disk.");note->align(FL_ALIGN_LEFT|FL_ALIGN_INSIDE);
+        auto *hardware_btn=new Fl_Button(20,565,140,30,"Hardware");hardware_btn->callback([](Fl_Widget*,void*p){auto*s=(WifiConfig*)p;if(!s->hardware)s->hardware=new WifiHardware;else{s->hardware->win.show();}},this);
+        auto *note=new Fl_Box(175,560,605,40,"Personal and open Wi-Fi networks. Profiles persist on installed systems\nand live sessions with persistent home storage.");note->align(FL_ALIGN_LEFT|FL_ALIGN_INSIDE);
         win.end();win.callback([](Fl_Widget*,void*p){auto*s=(WifiConfig*)p;if(s->child>0||s->connecting)s->message("Wait for the operation to finish, or disconnect before closing.");else s->win.hide();},this);
         refresh();Fl::add_timeout(1,tick,this);win.show();
     }
-    ~WifiConfig(){Fl::remove_timeout(tick,this);}
+    ~WifiConfig(){Fl::remove_timeout(tick,this);delete hardware;}
 };

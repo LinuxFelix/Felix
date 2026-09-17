@@ -27,8 +27,8 @@ fi
 sh /src/build-flwm.sh /src/flwm /work/flwm /src/flwm-config.h
 sh /src/build-apps.sh /src /out
 sh /src/build-wbar.sh /src/wbar /out
-cc -Os /src/src/felix-root.c -lX11 -o /out/felix-root
+cc -Os /src/src/felix-root.c -lpng -lX11 -o /out/felix-root
 cc -Os /src/src/felix-about.c $(pkg-config --cflags --libs xft) -lX11 -o /out/felix-about
 cp /work/flwm/flwm /opt/felix/bin/Xfbdev /opt/felix/bin/Xtinyremote /out/
-strip /out/*
+strip /out/Xfbdev /out/Xtinyremote /out/flwm /out/felix-apps /out/felix-root /out/felix-about /out/wbar
 echo ALPINE_BUILD_OK

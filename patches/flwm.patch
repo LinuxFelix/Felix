@@ -1,12 +1,42 @@
 diff --git a/Frame.C b/Frame.C
-index 33ead9b..d46894a 100644
+index 33ead9b..e185ca9 100644
 --- a/Frame.C
 +++ b/Frame.C
-@@ -17,13 +17,14 @@
+@@ -17,13 +17,44 @@
  #include <stdio.h>
  #include <stdlib.h>
  #include <FL/fl_draw.H>
 +#include "Glass.H"
++static bool motion_enabled() {
++  Atom property=XInternAtom(fl_display,"_FELIX_REDUCED_MOTION",False),type;
++  int format;unsigned long count,remaining;unsigned char *data=0;bool enabled=true;
++  if(XGetWindowProperty(fl_display,DefaultRootWindow(fl_display),property,0,1,False,XA_CARDINAL,&type,&format,&count,&remaining,&data)==Success && data) {
++    if(type==XA_CARDINAL && format==32 && count==1)enabled=(*(unsigned long*)data==0);
++    XFree(data);
++  }
++  return enabled;
++}
++// Closing clients are already gone by DestroyNotify. Animate an independent
++// titlebar proxy so no timeout ever refers to a deleted Frame or client.
++class ClosingTitle : public Fl_Window {
++  int step_=0,origin_y_;
++  static void tick(void *p) {
++    ClosingTitle *c=(ClosingTitle*)p;
++    if(++c->step_>=7){c->hide();Fl::delete_widget(c);return;}
++    c->position(c->x(),c->origin_y_+c->step_*5);
++    Fl::repeat_timeout(.02,tick,c);
++  }
++  void draw() {
++    felix_glass(0,0,w(),h(),false);
++    fl_color(FL_FOREGROUND_COLOR);fl_font(FL_HELVETICA,12);
++    if(label())fl_draw(label(),8,0,w()-16,h(),FL_ALIGN_LEFT|FL_ALIGN_INSIDE);
++  }
++public:
++  ClosingTitle(int x,int y,int w,const char *title):Fl_Window(x,y,w,24),origin_y_(y) {
++    copy_label(title?title:"");set_override();end();show();Fl::add_timeout(.02,tick,this);
++  }
++  ~ClosingTitle(){Fl::remove_timeout(tick,this);}
++};
  #if FL_API_VERSION >= 10400
  #  if FLTK_USE_CAIRO
  #    include <cairo/cairo-xlib.h>
@@ -18,9 +48,36 @@ index 33ead9b..d46894a 100644
  #include "Rotated.H" // text rotation code; not supported by non-Xft FLTK 1.3.x
  #endif
  
-@@ -485,12 +486,8 @@ int Frame::force_y_onscreen(int Y, int H) {
+@@ -327,6 +358,20 @@ Frame::Frame(XWindow window, XWindowAttributes* existing) :
+     if (!existing) activate_if_transient();
+   }
+   set_visible();
++  if(!existing && state_==NORMAL && motion_enabled()) {
++    XMoveWindow(fl_display,fl_xid(this),x(),y()+24);
++    Fl::add_timeout(.02,slide_tick,this);
++  }
++}
++
++void Frame::slide_tick(void *p) {
++  Frame *f=(Frame*)p;
++  if(++f->slide_step_>=6 || Fl::pushed() || f->state_!=NORMAL) {
++    XMoveWindow(fl_display,fl_xid(f),f->x(),f->y());return;
++  }
++  int left=6-f->slide_step_;
++  XMoveWindow(fl_display,fl_xid(f),f->x(),f->y()+24*left*left/36);
++  Fl::repeat_timeout(.02,slide_tick,f);
+ }
+ 
+ #if SMART_PLACEMENT
+@@ -484,13 +529,14 @@ int Frame::force_y_onscreen(int Y, int H) {
+ // to the contained window, which is already been destroyed.
  
  Frame::~Frame() {
++  Fl::remove_timeout(slide_tick,this);
++  if(state_==NORMAL && visible() && motion_enabled()) {
++    Fl_Group *previous=Fl_Group::current();Fl_Group::current(0);
++    new ClosingTitle(x(),y(),w(),label());Fl_Group::current(previous);
++  }
  
 -  // It is possible for the frame to be destroyed while the menu is
 -  // popped-up, and the menu will still contain a pointer to it.  To
@@ -33,7 +90,19 @@ index 33ead9b..d46894a 100644
    state_ = UNMAPPED;
  
    // remove any pointers to this:
-@@ -1164,7 +1161,9 @@ void Frame::set_size(int nx, int ny, int nw, int nh, int warp) {
+@@ -1071,9 +1117,10 @@ void Frame::desktop(Desktop* d) {
+ // the contents.  This also sets the buttons on/off as needed:
+ 
+ void Frame::set_size(int nx, int ny, int nw, int nh, int warp) {
++  Fl::remove_timeout(slide_tick,this);
+   int dx = nx-x(); x(nx);
+   int dy = ny-y(); y(ny);
+-  if (!dx && !dy && nw == w() && nh == h()) return;
++  if (!dx && !dy && nw == w() && nh == h()) {XMoveWindow(fl_display,fl_xid(this),nx,ny);return;}
+   int unmap = 0;
+   int remap = 0;
+   // use XClearArea to cause correct damage events:
+@@ -1164,7 +1211,9 @@ void Frame::set_size(int nx, int ny, int nw, int nh, int warp) {
    if (warp == 3 && !DoNotWarp && (dx || dy))
      XWarpPointer(fl_display, None,None,0,0,0,0, dx, dy);
    if (nw > dwidth) sendConfigureNotify();
@@ -44,7 +113,7 @@ index 33ead9b..d46894a 100644
  }
  
  void Frame::sendConfigureNotify() const {
-@@ -1435,39 +1434,22 @@ void Frame::save_protocol() {
+@@ -1435,39 +1484,22 @@ void Frame::save_protocol() {
  #ifdef TOPSIDE
  void Frame::draw() {
    if (flag(NO_BORDER)) return;
@@ -97,7 +166,7 @@ index 33ead9b..d46894a 100644
  }
  #else
  void Frame::draw() {
-@@ -1476,7 +1458,7 @@ void Frame::draw() {
+@@ -1476,7 +1508,7 @@ void Frame::draw() {
  	  labelcolor(fl_contrast(FL_FOREGROUND_COLOR, FL_BACKGROUND2_COLOR));
  	  if (active()) {
  	 	 fl_rectf(2, 2, w() - 4, h()-4,
@@ -106,7 +175,7 @@ index 33ead9b..d46894a 100644
        }
        else {
          fl_rectf(2, 2, w() - 4, h()-4, FL_BACKGROUND2_COLOR); // ML
-@@ -1555,9 +1537,7 @@ void Frame::redraw_clock() {
+@@ -1555,9 +1587,7 @@ void Frame::redraw_clock() {
  void FrameButton::draw() {
    const int x = this->x();
    const int y = this->y();
@@ -117,6 +186,19 @@ index 33ead9b..d46894a 100644
    fl_line_style(FL_SOLID, (2.0 * sf + 0.6));
    fl_color(parent()->labelcolor());
    int m = (min(w(),h()) + 1) / 2;
+diff --git a/Frame.H b/Frame.H
+index a138833..fc715d6 100644
+--- a/Frame.H
++++ b/Frame.H
+@@ -62,6 +62,8 @@ public:
+ class Desktop;
+ 
+ class Frame : public Fl_Window {
++  int slide_step_ = 0;
++  static void slide_tick(void*);
+ 
+   XWindow window_;
+ 
 diff --git a/Menu.C b/Menu.C
 index 6fcd3b7..36a94c6 100644
 --- a/Menu.C

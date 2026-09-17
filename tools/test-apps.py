@@ -7,7 +7,7 @@ OUT=ROOT/'build/release'
 class Guest:
     def __init__(self,data_disk=None):
         self.log=open(OUT/'apps-qemu.log','wb')
-        args=['qemu-system-i386','-accel','kvm','-cpu','host','-m','512','-cdrom',str(OUT/'felix-1.0-x86.iso'),'-boot','d','-vga','std','-nic','user,model=e1000','-display','none','-vnc','127.0.0.1:19','-serial','tcp:127.0.0.1:2311,server=on,wait=off','-no-reboot']
+        args=['qemu-system-i386','-accel','kvm','-cpu','host','-m','512','-cdrom',str(OUT/'felix-1.1-x86.iso'),'-boot','d','-vga','std','-nic','user,model=e1000','-display','none','-vnc','127.0.0.1:19','-serial','tcp:127.0.0.1:2311,server=on,wait=off','-no-reboot']
         if data_disk:args+=['-drive',f'file={data_disk},format=raw,if=ide']
         self.p=subprocess.Popen(args,stdout=self.log,stderr=self.log)
         for _ in range(100):

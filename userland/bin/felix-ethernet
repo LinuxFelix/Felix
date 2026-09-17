@@ -1,0 +1,22 @@
+#!/bin/sh
+# Keep one DHCP client per wired interface; includes hot-plugged USB NICs.
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin
+mkdir /run/felix-ethernet.lock 2>/dev/null || exit 0
+trap 'rmdir /run/felix-ethernet.lock 2>/dev/null' EXIT
+while :; do
+    for device in /sys/class/net/*; do
+        name=${device##*/}
+        [ "$name" != lo ] || continue
+        [ ! -d "$device/wireless" ] && [ ! -e "$device/phy80211" ] || continue
+        [ "$(cat "$device/type" 2>/dev/null)" = 1 ] || continue
+        case "$name" in *[!a-zA-Z0-9_.-]*) continue ;; esac
+        [ ! -f "/run/felix-static-$name" ] || continue
+        ip link set "$name" up 2>/dev/null || continue
+        [ "$(cat "$device/carrier" 2>/dev/null)" = 1 ] || continue
+        pidfile=/run/felix-dhcp-$name.pid
+        if [ -s "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then continue; fi
+        udhcpc -f -i "$name" -p "$pidfile" -t 3 -T 2 >>/tmp/network.log 2>&1 &
+        echo $! > "$pidfile"
+    done
+    sleep 5
+done

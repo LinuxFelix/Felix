@@ -14,7 +14,7 @@ for pair in 'null 1 3' 'zero 1 5' 'urandom 1 9' 'random 1 8'; do
     set -- $pair
     [ -e "$work/alpine/dev/$1" ] || mknod -m 666 "$work/alpine/dev/$1" c "$2" "$3"
 done
-chroot "$work/alpine" /sbin/apk add build-base autoconf automake libtool pkgconf xorgproto xtrans libfontenc-dev libx11-dev libxext-dev zlib-dev freetype-dev util-macros linux-headers imlib2-dev libxrandr-dev libxft-dev font-dejavu tango-icon-theme
+chroot "$work/alpine" /sbin/apk add libpng-dev build-base autoconf automake libtool pkgconf xorgproto xtrans libfontenc-dev libx11-dev libxext-dev zlib-dev freetype-dev util-macros linux-headers imlib2-dev libxrandr-dev libxft-dev font-dejavu tango-icon-theme
 mkdir -p "$work/alpine/src"
 tar -C "$root/userland" --exclude=.git --exclude=autom4te.cache -cf - . | tar -C "$work/alpine/src" -xf -
 cp "$root/service/felix/patches/flwm-config.h" "$work/alpine/src/"

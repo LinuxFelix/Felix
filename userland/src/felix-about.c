@@ -6,7 +6,7 @@
 int main(void) {
     Display *d = XOpenDisplay(0);
     XEvent e;
-    const char *lines[] = {"Felix 1.0", "Small system. Your space.", "Right-click the desktop to open applications.", "Press Escape to close."};
+    const char *lines[] = {"Felix 1.1", "Small system. Your space.", "Right-click the desktop to open applications.", "Press Escape to close."};
     int i, s;
     Window w;
     XftDraw *draw;

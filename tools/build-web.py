@@ -22,7 +22,7 @@ shots = [('felix-1.0-desktop.png', 'Desktop', 'Felix 1.0 build: glass-style desk
          ('felix-1.0-terminal.png', 'Terminal', 'Felix 1.0 build: tinted terminal with DejaVu text.')]
 for name, _, _ in shots:
     shutil.copy2(release / name, web / 'images' / name)
-iso = release / 'felix-1.0-x86.iso'
+iso = release / 'felix-1.1-x86.iso'
 digest = hashlib.sha256(iso.read_bytes()).hexdigest()
 size = iso.stat().st_size
 shutil.copy2(iso, web / 'downloads' / iso.name)
@@ -48,7 +48,7 @@ def write_page(filename, title, content):
 <div class="site">
   <header>
     <div class="titlebar"><span>felix / {title.lower()}</span><span class="window-marks" aria-hidden="true">&#8722; &#9633; &#215;</span></div>
-    <div class="masthead"><a class="wordmark" href="index.html">felix<span>small system. your space.</span></a><p>Felix 1.0 / x86<br><span class="muted">A little desktop of your own.</span></p></div>
+    <div class="masthead"><a class="wordmark" href="index.html">felix<span>small system. your space.</span></a><p>Felix 1.1 preview / x86<br><span class="muted">A little desktop of your own.</span></p></div>
   </header>
   <div class="layout">
     <aside>
@@ -84,7 +84,7 @@ write_page('index.html', 'Home', f'''
 write_page('downloads.html', 'Downloads', f'''
 <p class="eyebrow">TAKE A COPY</p><h1>Downloads</h1>
 <p class="intro">One small ISO. A complete Felix desktop.</p>
-<section class="download-box"><h2>Felix 1.0 / x86</h2>
+<section class="download-box"><h2>Felix 1.1 preview / x86</h2>
 <p><a class="button" href="downloads/{iso.name}" download>Download ISO &raquo;</a></p>
 <p>{size/1e6:.2f} MB &middot; {size:,} bytes &middot; 32-bit x86</p>
 <p><a href="downloads/{iso.name}.sha256" download>SHA-256 checksum file</a></p></section>

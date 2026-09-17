@@ -1,2 +1,2 @@
 #!/bin/sh
-exec /usr/bin/felix-root --ppm /usr/share/felix/theme/wallpaper.ppm
+exec /usr/bin/felix-root --image /usr/share/felix/theme/wallpaper.png

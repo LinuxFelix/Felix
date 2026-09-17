@@ -45,7 +45,7 @@ def key(k):
     command('DISPLAY=:0 /tmp/menu-input '+names.get(k,k)+(' || :' if k=='ret' else ''))
 with open(out/'menu-qemu.log','wb') as log:
     p=subprocess.Popen(['qemu-system-i386','-accel','kvm','-cpu','host','-m','512',
-        '-cdrom',str(out/'felix-1.0-x86.iso'),'-boot','d','-vga','std',
+        '-cdrom',str(out/'felix-1.1-x86.iso'),'-boot','d','-vga','std',
         '-nic','user,model=e1000','-display','none',
         '-serial','tcp:127.0.0.1:2316,server=on,wait=off',
         '-qmp','tcp:127.0.0.1:2317,server=on,wait=off','-no-reboot'],stdout=log,stderr=log)
